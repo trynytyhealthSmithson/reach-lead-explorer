@@ -113,7 +113,6 @@ export default function ProgramChanges() {
 
   const totalACOs = 150;
   const totalSavings = records.reduce((s, r) => s + (r.shared_savings || 0), 0);
-  const py3 = yearStats(2023);
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:20 }}>

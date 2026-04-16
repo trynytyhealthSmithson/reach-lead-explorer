@@ -2,9 +2,9 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   LineChart, Line, BarChart, Bar, ComposedChart,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer, ReferenceLine, Cell,
+  ResponsiveContainer, Cell,
 } from 'recharts';
-import { fmt, COLORS, CONFIG_COLORS, CONFIG_LABELS, CAHPS_LABELS, YEAR_NARRATIVES } from '../utils';
+import { fmt, COLORS, CONFIG_COLORS, CONFIG_LABELS, CAHPS_LABELS } from '../utils';
 import acoList from '../data/reach_aco_list.json';
 
 const sortedACOs = [...acoList].sort((a, b) => a.aco_name.localeCompare(b.aco_name));
@@ -386,9 +386,8 @@ export default function ACODeepDive({
   const [selectedACO, setSelectedACO] = useState(null);
   const [activeTab,   setActiveTab]   = useState('overview');
   const [rvmPair,     setRvmPair]     = useState(null); // {from, to, idx}
-  const [qualTab,     setQualTab]     = useState('scores');
 
-  const records = perfData?.records || [];
+  const records = useMemo(() => perfData?.records || [], [perfData]);
 
   // Handle navigation from Program Overview
   useEffect(() => {
@@ -455,37 +454,9 @@ export default function ACODeepDive({
 
   // Capitation breakdown handled by CapitationBreakdownCard component
 
-  // Savings trend data
-  const savTrend = useMemo(() => acoRecords.map(r => ({
-    year:      r.perf_year,
-    sav_rate:  r.sav_rate,
-    benchmark: r.final_benchmark,
-    expense:   r.tot_cost_care,
-    savings:   r.shared_savings,
-    prog_avg:  null, // will overlay from trends
-  })), [acoRecords]);
 
-  // Spend per bene trend
-  const spendTrend = useMemo(() => acoRecords.map(r => {
-    const b = r.bene_cnt || 1;
-    const m = r.perf_year === 2021 ? 9 : 12;
-    return {
-      year: r.perf_year,
-      'Inpatient': r.expnd_inp_all != null ? +(r.expnd_inp_all/b/m).toFixed(0) : null,
-      'Physician':  r.expnd_pb     != null ? +(r.expnd_pb/b/m).toFixed(0)     : null,
-      'Outpatient': r.expnd_opd    != null ? +(r.expnd_opd/b/m).toFixed(0)    : null,
-      'SNF':        r.expnd_snf    != null ? +(r.expnd_snf/b/m).toFixed(0)    : null,
-      'HHA':        r.expnd_hha    != null ? +(r.expnd_hha/b/m).toFixed(0)    : null,
-    };
-  }), [acoRecords]);
 
   // ── Format helpers ──
-  const fmtDelta = (v, isGood='up') => {
-    if (v == null) return '—';
-    const up = v > 0;
-    const color = isGood==='up' ? (up?COLORS.green:COLORS.red) : (up?COLORS.red:COLORS.green);
-    return <span style={{color}}>{v>0?'+':''}{typeof v === 'number' ? v.toFixed(2) : v}%</span>;
-  };
   const fmtM = (v) => v != null ? `$${(v/1e6).toFixed(1)}M` : '—';
 
   // ── RVM table render helpers ──

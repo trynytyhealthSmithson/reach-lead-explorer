@@ -101,7 +101,7 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
   const [qualView,     setQualView]     = useState('tqs');
   const [acoSearch,    setAcoSearch]    = useState('');
 
-  const records = perfData?.records || [];
+  const records = useMemo(() => perfData?.records || [], [perfData]);
 
   // ── Chart data: true program-level savings rate ───────────────────────────
   const chartData = useMemo(() => trendsData.map(t => {

@@ -1,10 +1,9 @@
 import React, { useMemo } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Cell, LineChart, Line, ReferenceLine,
+  ResponsiveContainer, Cell,
 } from 'recharts';
 import { fmt, COLORS, TYPE_COLORS } from '../utils';
-import trendsData from '../data/reach_program_trends.json';
 
 const LEAD_FEATURES = [
   {
@@ -58,7 +57,7 @@ const LEAD_FEATURES = [
 ];
 
 export default function LEADTransition({ perfData, pinnedACO, navigateToACO, pinACO }) {
-  const records = perfData?.records || [];
+  const records = useMemo(() => perfData?.records || [], [perfData]);
   const py2023 = useMemo(() => records.filter(r => r.perf_year === 2023), [records]);
 
   // Savings rate distribution — who are the strongest LEAD candidates?
@@ -110,7 +109,6 @@ export default function LEADTransition({ perfData, pinnedACO, navigateToACO, pin
   }, [py2023]);
 
   // REACH → LEAD trajectory narrative stats
-  const totalBenes23 = py2023.reduce((a,r) => a+(r.bene_cnt||0), 0);
   const savers23 = py2023.filter(r => r.sav_rate > 0).length;
   const avgSav23 = py2023.reduce((a,r) => a+(r.sav_rate||0), 0) / py2023.length;
   const totalSavings23 = py2023.reduce((a,r) => a+(r.shared_savings||0), 0);
