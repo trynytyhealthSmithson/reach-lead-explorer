@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import { fmt, COLORS, CONFIG_COLORS, CONFIG_LABELS, CAHPS_LABELS } from '../utils';
 import acoList from '../data/reach_aco_list.json';
+import { generateACOReport } from '../generateACOReport';
 
 const sortedACOs = [...acoList].sort((a, b) => a.aco_name.localeCompare(b.aco_name));
 
@@ -385,9 +386,25 @@ export default function ACODeepDive({
 }) {
   const [selectedACO, setSelectedACO] = useState(null);
   const [activeTab,   setActiveTab]   = useState('overview');
+  const [reportStatus, setReportStatus] = useState(null); // null | 'loading' | string
   const [rvmPair,     setRvmPair]     = useState(null); // {from, to, idx}
 
   const records = useMemo(() => perfData?.records || [], [perfData]);
+
+  const handleExportReport = async () => {
+    if (!aco || !latest) return;
+    try {
+      await generateACOReport(
+        aco, acoRecords, records,
+        (msg) => setReportStatus(msg)
+      );
+      setReportStatus(null);
+    } catch (err) {
+      console.error('Report generation failed:', err);
+      setReportStatus('Error — please try again');
+      setTimeout(() => setReportStatus(null), 3000);
+    }
+  };
 
   // Handle navigation from Program Overview
   useEffect(() => {
@@ -610,6 +627,15 @@ export default function ACODeepDive({
                 📌 Pin ACO
               </button>
             )}
+            <button onClick={handleExportReport}
+              disabled={!!reportStatus}
+              style={{ padding:'6px 14px', borderRadius:'var(--radius)', fontSize:11, fontWeight:700,
+                background: reportStatus ? 'rgba(255,255,255,0.1)' : 'white',
+                color: reportStatus ? 'rgba(255,255,255,0.5)' : 'var(--navy)',
+                border:'none', cursor: reportStatus ? 'default' : 'pointer',
+                minWidth:160, transition:'all 0.2s' }}>
+              {reportStatus || '📄 Export Report →'}
+            </button>
             <button onClick={goToLEAD}
               style={{ padding:'6px 14px', borderRadius:'var(--radius)', fontSize:11, fontWeight:700,
                 background:`${COLORS.gold}`, color:'var(--navy)',
