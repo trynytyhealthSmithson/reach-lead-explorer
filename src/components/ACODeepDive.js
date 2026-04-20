@@ -353,9 +353,17 @@ function computeRVM(curr, prev) {
 
   return [
     rvm('Inpatient (Total)', 'full',
-      curr.adm_n, prev.adm_n, curr.expnd_inp_all, prev.expnd_inp_all, [
-        rvm('  Acute',  'mix', curr.adm_s_trm_n, prev.adm_s_trm_n, curr.expnd_inp_s_trm, prev.expnd_inp_s_trm),
-        rvm('  Rehab',  'mix', curr.adm_rehab_n,  prev.adm_rehab_n,  curr.expnd_inp_rehab, prev.expnd_inp_rehab),
+      curr.adm_n != null ? curr.adm_n / py_c * 1000 : null,
+      prev.adm_n != null ? prev.adm_n / py_p * 1000 : null,
+      curr.expnd_inp_all, prev.expnd_inp_all, [
+        rvm('  Acute',  'mix',
+          curr.adm_s_trm_n != null ? curr.adm_s_trm_n / py_c * 1000 : null,
+          prev.adm_s_trm_n != null ? prev.adm_s_trm_n / py_p * 1000 : null,
+          curr.expnd_inp_s_trm, prev.expnd_inp_s_trm),
+        rvm('  Rehab',  'mix',
+          curr.adm_rehab_n != null ? curr.adm_rehab_n / py_c * 1000 : null,
+          prev.adm_rehab_n != null ? prev.adm_rehab_n / py_p * 1000 : null,
+          curr.expnd_inp_rehab, prev.expnd_inp_rehab),
       ]),
     // SNF with LOS + day rate decomposition
     {
@@ -1227,20 +1235,36 @@ export default function ACODeepDive({
                 </thead>
                 <tbody>
                   {[
-                    {label:'ED Visits (Total) / 1K',key:'p_edv_vis',       lower:true,  fmt_:v=>`${v.toFixed(1)}`},
-                    {label:'ED Non-Hosp / 1K', key:'_ed_nonhosp',     lower:true,  fmt_:v=>`${v.toFixed(1)}`},
-                    {label:'ED (non-hosp) / 1K',   key:'p_edv_vis_hosp',  lower:true,  fmt_:v=>`${v.toFixed(1)}`},
-                    {label:'SNF Admits / 1K',      key:'p_snf_adm',       lower:true,  fmt_:v=>`${v.toFixed(1)}`},
-                    {label:'SNF Avg LOS (days)',   key:'snf_los',          lower:true,  fmt_:v=>`${v.toFixed(1)}`},
-                    {label:'Total EM Visits / 1K', key:'p_em_total',      lower:null,  fmt_:v=>`${v.toFixed(0)}`},
-                    {label:'PCP EM Visits / 1K',   key:'p_em_pcp_vis',    lower:false, fmt_:v=>`${v.toFixed(0)}`},
-                    {label:'Specialist EM / 1K',   key:'p_em_sp_vis',     lower:true,  fmt_:v=>`${v.toFixed(0)}`},
-                    {label:'CT Scans / 1K',        key:'p_ct_vis',        lower:true,  fmt_:v=>`${v.toFixed(1)}`},
-                    {label:'MRI Scans / 1K',       key:'p_mri_vis',       lower:true,  fmt_:v=>`${v.toFixed(1)}`},
-                    {label:'Nurse Visits / 1K',    key:'p_nurse_vis',     lower:false, fmt_:v=>`${v.toFixed(0)}`},
+                    {label:'Inpatient Admits / 1K',  key:'_adm_per1k',      lower:true,  fmt_:v=>`${v.toFixed(1)}`},
+                    {label:'  Acute Admits / 1K',    key:'_adm_s_trm_per1k',lower:true,  fmt_:v=>`${v.toFixed(1)}`},
+                    {label:'  Rehab Admits / 1K',    key:'_adm_rehab_per1k',lower:true,  fmt_:v=>`${v.toFixed(1)}`},
+                    {label:'ED Visits (Total) / 1K', key:'p_edv_vis',       lower:true,  fmt_:v=>`${v.toFixed(1)}`},
+                    {label:'ED → Hosp Admits / 1K',  key:'p_edv_vis_hosp',  lower:true,  fmt_:v=>`${v.toFixed(1)}`},
+                    {label:'ED Non-Hosp / 1K',       key:'_ed_nonhosp',     lower:true,  fmt_:v=>`${v.toFixed(1)}`},
+                    {label:'SNF Admits / 1K',        key:'p_snf_adm',       lower:true,  fmt_:v=>`${v.toFixed(1)}`},
+                    {label:'SNF Avg LOS (days)',      key:'snf_los',         lower:true,  fmt_:v=>`${v.toFixed(1)}`},
+                    {label:'PCP EM Visits / 1K',     key:'p_em_pcp_vis',    lower:false, fmt_:v=>`${v.toFixed(0)}`},
+                    {label:'Specialist EM / 1K',     key:'p_em_sp_vis',     lower:true,  fmt_:v=>`${v.toFixed(0)}`},
+                    {label:'CT Scans / 1K',          key:'p_ct_vis',        lower:true,  fmt_:v=>`${v.toFixed(1)}`},
+                    {label:'MRI Scans / 1K',         key:'p_mri_vis',       lower:true,  fmt_:v=>`${v.toFixed(1)}`},
+                    {label:'Nurse Visits / 1K',      key:'p_nurse_vis',     lower:false, fmt_:v=>`${v.toFixed(0)}`},
                   ].map(m => {
-                    const peerVal = peerAvg(m.key);
-                    const latVal  = latest?.[m.key];
+                    const peerVal = m.key==='_ed_nonhosp'
+                      ? (() => { const v1=peerAvg('p_edv_vis'), v2=peerAvg('p_edv_vis_hosp'); return v1!=null&&v2!=null?v1-v2:null; })()
+                      : m.key==='_adm_per1k'
+                      ? (() => { const recs=records.filter(r=>r.perf_year===latest?.perf_year&&r.config_key===latest?.config_key&&r.aco_id!==latest?.aco_id&&!r.is_midyear); const vals=recs.map(r=>r.adm_n!=null&&r.bene_cnt?r.adm_n/r.bene_cnt*1000:null).filter(v=>v!=null); return vals.length?vals.reduce((s,v)=>s+v,0)/vals.length:null; })()
+                      : m.key==='_adm_s_trm_per1k'
+                      ? (() => { const recs=records.filter(r=>r.perf_year===latest?.perf_year&&r.config_key===latest?.config_key&&r.aco_id!==latest?.aco_id&&!r.is_midyear); const vals=recs.map(r=>r.adm_s_trm_n!=null&&r.bene_cnt?r.adm_s_trm_n/r.bene_cnt*1000:null).filter(v=>v!=null); return vals.length?vals.reduce((s,v)=>s+v,0)/vals.length:null; })()
+                      : m.key==='_adm_rehab_per1k'
+                      ? (() => { const recs=records.filter(r=>r.perf_year===latest?.perf_year&&r.config_key===latest?.config_key&&r.aco_id!==latest?.aco_id&&!r.is_midyear); const vals=recs.map(r=>r.adm_rehab_n!=null&&r.bene_cnt?r.adm_rehab_n/r.bene_cnt*1000:null).filter(v=>v!=null); return vals.length?vals.reduce((s,v)=>s+v,0)/vals.length:null; })()
+                      : peerAvg(m.key);
+                    const latVal  = m.key==='_adm_per1k'
+                      ? (latest?.adm_n!=null&&latest?.bene_cnt?latest.adm_n/latest.bene_cnt*1000:null)
+                      : m.key==='_adm_s_trm_per1k'
+                      ? (latest?.adm_s_trm_n!=null&&latest?.bene_cnt?latest.adm_s_trm_n/latest.bene_cnt*1000:null)
+                      : m.key==='_adm_rehab_per1k'
+                      ? (latest?.adm_rehab_n!=null&&latest?.bene_cnt?latest.adm_rehab_n/latest.bene_cnt*1000:null)
+                      : latest?.[m.key];
                     const diff    = latVal!=null && peerVal!=null ? latVal - peerVal : null;
                     const better  = diff!=null && m.lower!==null ? (m.lower ? diff<0 : diff>0) : null;
                     return (
@@ -1251,6 +1275,12 @@ export default function ACODeepDive({
                             color:r.perf_year===latest?.perf_year?'var(--navy)':'var(--gray-500)'}}>
                             {m.key==='_ed_nonhosp'
                             ? (r.p_edv_vis!=null && r.p_edv_vis_hosp!=null ? m.fmt_(r.p_edv_vis - r.p_edv_vis_hosp) : '—')
+                            : m.key==='_adm_per1k'
+                            ? (r.adm_n!=null && r.bene_cnt ? m.fmt_(r.adm_n / r.bene_cnt * 1000) : '—')
+                            : m.key==='_adm_s_trm_per1k'
+                            ? (r.adm_s_trm_n!=null && r.bene_cnt ? m.fmt_(r.adm_s_trm_n / r.bene_cnt * 1000) : '—')
+                            : m.key==='_adm_rehab_per1k'
+                            ? (r.adm_rehab_n!=null && r.bene_cnt ? m.fmt_(r.adm_rehab_n / r.bene_cnt * 1000) : '—')
                             : r[m.key]!=null ? m.fmt_(r[m.key]) : '—'}
                           </td>
                         ))}
