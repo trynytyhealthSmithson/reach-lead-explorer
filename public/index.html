@@ -13,7 +13,11 @@
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-    gtag('config', 'G-GZG2KKV4BG');
+    gtag('config', 'G-GZG2KKV4BG', {
+      linker: {
+        domains: ['www.trynytyhealth.com', 'mssppuf.trynytyhealth.com']
+      }
+    });
   </script>
   <!-- Vercel Analytics -->
   <script defer src="/_vercel/insights/script.js"></script>
