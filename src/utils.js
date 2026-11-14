@@ -78,11 +78,12 @@ export const PROGRAM_EVENTS = {
   2021: '9-month first year (April to December) · GPDC · Pay-for-reporting quality',
   2022: 'First full 12-month year · Final GPDC year · CAHPS measures reported',
   2023: 'Renamed ACO REACH · Pay-for-performance quality · HEBA and High Performers Pool begin',
-  2024: 'Fourth performance year · ACO REACH',
+  2024: 'Fourth ACO REACH year · High Performers Pool grows · Population Adjustment and Data Reporting adjustment',
 };
 
 export const YEAR_NARRATIVES = {
   2021: 'The first performance year: 53 ACOs (then called Direct Contracting Entities) in a 9-month performance period, April to December, under the Global and Professional Direct Contracting (GPDC) Model. Quality was pay-for-reporting, so every ACO received a 100% quality score.',
   2022: 'The model grew to 99 ACOs in its first full 12-month year, still operating as GPDC. CMS announced in February 2022 that GPDC would be redesigned as ACO REACH effective January 2023. CAHPS patient experience measures were reported but did not affect the quality score.',
+  2024: 'The fourth performance year, with 115 ACOs and about 2.5 million aligned beneficiaries. 49 ACOs qualified for the High Performers Pool, up from 24. In the PY 2024 file, CMS publishes the benchmark equity adjustment as the Population Adjustment and the quality data adjustment as the Data Reporting adjustment, and adds a CAHPS composite score.',
   2023: 'The first year as ACO REACH, with 132 ACOs and about 2 million aligned beneficiaries. Quality moved to pay-for-performance, and the average quality score fell from 99% to 79%. The Health Equity Benchmark Adjustment (HEBA) and the High Performers Pool began; 24 ACOs qualified for the pool.',
 };

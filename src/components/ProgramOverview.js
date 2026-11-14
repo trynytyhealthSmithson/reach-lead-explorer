@@ -765,11 +765,11 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
 
       {/* HEBA */}
       <div className="chart-card" style={{borderLeft:'4px solid var(--gold)'}}>
-        <div className="chart-title">Health Equity Benchmark Adjustment (HEBA): PY {hebaYear}</div>
+        <div className="chart-title">{hebaYear >= 2024 ? 'Population Adjustment (formerly HEBA)' : 'Health Equity Benchmark Adjustment (HEBA)'}: PY {hebaYear}</div>
         <div className="chart-subtitle">
-          HEBA raises the benchmark for aligned beneficiaries from the most underserved communities and lowers
-          it slightly for those from the least underserved. Most ACOs receive both, so the cards below show
-          each ACO's net adjustment.
+          This adjustment raises the benchmark for aligned beneficiaries from the most underserved communities and
+          lowers it for those from the least underserved. CMS published it as HEBA in PY 2023 and as the Population
+          Adjustment in PY 2024. Most ACOs receive both, so the cards show each ACO's net adjustment.
         </div>
         <div style={{display:'flex',gap:16,marginTop:14,flexWrap:'wrap'}}>
           {[

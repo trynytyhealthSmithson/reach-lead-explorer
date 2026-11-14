@@ -27,12 +27,12 @@ FILES = {
     2021: 'PY1_EXPND_FNCL_QLTY_PUF_REDACT_UPDATE.csv',
     2022: 'PY2_FNCL_QLTY_CORE_EXP_PUF_REDACT_FINAL 2022_Ha Edits 04_18_2025.csv',
     2023: 'py3_fncl_qltypuf_rdx.csv',
-    2024: 'py4_fncl_qltypuf_rdx.csv',
+    2024: 'py4_fncl_qlty_core_exp_puf_redact_02MAR26.csv',
 }
 MONTHS = {2021: 9}            # PY2021 ran April to December
 NULLS = {'', '.', '*', 'N/A', 'NA', 'NR', '---', '--', 'nan', 'None'}
 
-PCT_FIELDS = {'SAV_RATE', 'DISCOUNT', 'PERC_DUAL', 'PERC_LTI'}
+PCT_FIELDS = {'SAV_RATE', 'DISCOUNT', 'PERC_DUAL', 'PERC_LTI', 'CAHPS_SCR'}
 
 # app key -> CMS column (default is key.upper())
 COLS = {
@@ -58,13 +58,28 @@ NUM_FIELDS = [
     'p_em_pcp_vis', 'p_em_sp_vis', 'p_ct_vis', 'p_mri_vis', 'p_nurse_vis', 'p_fqhc_rhc_vis',
     'qual_scr', 'acr_scr', 'uamcc_scr', 'dah_scr', 'tfu_scr',
     'ssm_taci', 'ssm_com', 'ssm_cc', 'ssm_sdm', 'ssm_pr', 'ssm_chos', 'ssm_hpe', 'ssm_spr',
+    'cahps_scr',
 ]
 FLAG_FIELDS = ['cisep_flag', 'hpp_flag']
 
 
+# PY2024 renamed two fields: HEBA is published as the Population Adjustment (PA_*),
+# and the HEDR quality adjustment as the Data Reporting adjustment (DR_ADJUST).
+RENAMED = {
+    'heba_up_amt': 'PA_UP_AMT', 'heba_down_amt': 'PA_DOWN_AMT',
+    'heba_up_mnths': 'PA_UP_MNTHS', 'heba_dn_mnths': 'PA_DOWN_MNTHS',
+    'hdr_adjust': 'DR_ADJUST',
+}
+
+
 def col_for(key, year, header):
+    default = COLS.get(key, key.upper())
+    if default not in header and key in RENAMED and RENAMED[key] in header:
+        return RENAMED[key]
     if key.startswith('ssm_'):
         return key.upper() + '_SCR'
+    if key == 'cahps_scr':
+        return 'CAHPS_SCR'
     if key == 'acr_scr' and 'ACR_SCR' not in header and 'ACH_SCR' in header:
         return 'ACH_SCR'
     if key == 'bene_cnt' and 'BENE_CNT' not in header and 'ALIGNED_BENEFICIARIES' in header:

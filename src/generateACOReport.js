@@ -120,7 +120,7 @@ export async function generateACOReport(aco, acoRecords, allRecords, onProgress)
       c: (latest?.sav_rate||0) > 0 ? TEAL : "FC8181" },
     { v: fmtM(latest?.shared_savings), l: 'Earned Savings', c: TEAL },
     { v: latest?.bene_cnt != null ? latest.bene_cnt.toLocaleString() : '—', l: 'Beneficiaries', c: WHITE },
-    { v: `${acoRecords.length} of 3`, l: 'REACH Years', c: WHITE },
+    { v: `${acoRecords.length} of ${[...new Set(allRecords.map(r => r.perf_year))].length}`, l: 'REACH Years', c: WHITE },
     { v: latest?.cisep_flag === 'Yes' ? '✓ Yes' : 'No',
       l: 'CI/SEP Status',
       c: latest?.cisep_flag === 'Yes' ? TEAL : SLATE },

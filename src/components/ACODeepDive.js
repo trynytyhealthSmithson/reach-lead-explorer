@@ -519,9 +519,9 @@ export default function ACODeepDive({
         </div>
         {/* Quick-select for multi-year ACOs */}
         <div className="chart-card">
-          <div className="chart-title" style={{ marginBottom:10 }}>Multi-Year ACOs</div>
+          <div className="chart-title" style={{ marginBottom:10 }}>ACOs in Every Performance Year ({(perfData?.years||[]).length} years)</div>
           <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-            {sortedACOs.filter(a => a.years_count === 3).map(a => (
+            {sortedACOs.filter(a => a.years_count === (perfData?.years||[]).length).map(a => (
               <button key={a.aco_id}
                 onClick={() => { setSelectedACO(a); setActiveTab('overview'); }}
                 style={{ padding:'4px 10px', fontSize:11, borderRadius:20, cursor:'pointer',
@@ -728,7 +728,7 @@ export default function ACODeepDive({
                   {label:'APO Election',         value:latest?.apo_election||'—', good:latest?.apo_election==='Yes'},
                   {label:'Discount Rate',        value:latest?.discount!=null?`${latest.discount.toFixed(0)}%`:'—'},
                   {label:'First Part Year',      value:`PY ${aco.first_part_year||'—'}`},
-                  {label:'Years Participating',  value:`${acoRecords.length} of 3`},
+                  {label:'Years Participating',  value:`${acoRecords.length} of ${(perfData?.years||[]).length}`},
                 ].map(row => (
                   <div key={row.label} style={{ display:'flex', justifyContent:'space-between',
                     alignItems:'center', padding:'5px 0', borderBottom:'1px solid var(--gray-100)' }}>
@@ -1624,7 +1624,7 @@ export default function ACODeepDive({
           {/* HEBA context if available */}
           {latest?.heba_up_amt!=null && (
             <div className="chart-card" style={{ borderLeft:'4px solid var(--gold)' }}>
-              <div className="chart-title">HEBA (Health Equity Benchmark Adjustment): PY {latest.perf_year}</div>
+              <div className="chart-title">{latest.perf_year >= 2024 ? 'Population Adjustment (formerly HEBA)' : 'HEBA (Health Equity Benchmark Adjustment)'}: PY {latest.perf_year}</div>
               <div style={{ display:'flex', gap:14, marginTop:12, flexWrap:'wrap' }}>
                 {[
                   {label:'Upward Adj',   value:fmt.dollars(latest.heba_up_amt),  color:COLORS.green},

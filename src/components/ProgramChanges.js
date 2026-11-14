@@ -69,6 +69,26 @@ const YEAR_CONTENT = {
       { type: 'Renamed', text: 'GPDC Model to ACO REACH Model' },
     ],
   },
+  2024: {
+    title: 'Fourth Performance Year',
+    duration: '12 months (January to December)',
+    highlights: () => {
+      const y = records.filter(r => r.perf_year === 2024);
+      const up = y.reduce((s, r) => s + (r.heba_up_amt || 0), 0), dn = y.reduce((s, r) => s + (r.heba_down_amt || 0), 0);
+      return [
+        `${y.length} ACOs participated, covering ${(y.reduce((s, r) => s + (r.bene_cnt || 0), 0) / 1e6).toFixed(1)} million aligned beneficiaries`,
+        `${pctOf(2024, r => r.hpp_flag === 'Yes')} ACOs qualified for the High Performers Pool, up from ${pctOf(2023, r => r.hpp_flag === 'Yes')} in PY 2023`,
+        `The benchmark equity adjustment is published as the Population Adjustment: ${fmtM(up)} upward and ${fmtM(-dn)} downward`,
+        'The quality data adjustment is published as the Data Reporting (DR) adjustment: 5 points held harmless for demographic reporting, plus up to 5 points for complete social determinants of health data',
+        'A CAHPS composite score (share of possible patient experience points earned) is published for the first time',
+      ];
+    },
+    changes: [
+      { type: 'Renamed', text: 'HEBA fields published as the Population Adjustment (PA)' },
+      { type: 'Renamed', text: 'HEDR adjustment published as the Data Reporting (DR) adjustment, now including social determinants of health data' },
+      { type: 'Added', text: 'CAHPS composite score' },
+    ],
+  },
 };
 
 const COLORS_BY_INDEX = [COLORS.teal, COLORS.blue, COLORS.green, COLORS.navy, COLORS.purple, COLORS.amber];
