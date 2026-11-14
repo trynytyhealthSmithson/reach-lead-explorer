@@ -170,6 +170,11 @@ def build_trends(recs, years):
                 'total_shared_M': round(sum(r['shared_savings'] or 0 for r in g) / 1e6, 1),
                 'total_benes': int(sum(r['bene_cnt'] or 0 for r in g)),
             }
+        # CMS reports program results against the benchmark before the Global discount
+        # (gross savings = net savings to CMS + net savings to ACOs). Rebuild that basis from the PUF.
+        bench_pre = sum((r['final_benchmark'] or 0) / (1 - (r['discount'] or 0) / 100)
+                        + (r['heba_up_amt'] or 0) + (r['heba_down_amt'] or 0) for r in yr)
+        gross_cms = bench_pre - cost
         heba_up = [r['heba_up_amt'] for r in yr if r['heba_up_amt'] is not None]
         heba_dn = [r['heba_down_amt'] for r in yr if r['heba_down_amt'] is not None]
         out.append({
@@ -198,6 +203,11 @@ def build_trends(recs, years):
             'n_hpp_yes': sum(r['hpp_flag'] == 'Yes' for r in yr),
             'n_cisep_yes': sum(r['cisep_flag'] == 'Yes' for r in yr),
             'config_perf': cp,
+            'cms_basis_benchmark_M': round(bench_pre / 1e6, 1),
+            'cms_basis_gross_M': round(gross_cms / 1e6, 1),
+            'cms_basis_gross_rate': round(gross_cms / bench_pre * 100, 2) if bench_pre else None,
+            'cms_basis_medicare_M': round((gross_cms - shared) / 1e6, 1),
+            'cms_basis_gross_pbpm': round(gross_cms / benes / months, 2) if benes else None,
             'heba_up_total': round(sum(heba_up) / 1e6, 1) if heba_up else None,
             'heba_dn_total': round(sum(heba_dn) / 1e6, 1) if heba_dn else None,
         })

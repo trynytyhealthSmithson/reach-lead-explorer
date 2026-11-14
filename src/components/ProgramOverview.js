@@ -96,6 +96,13 @@ const CAHPS_SHORT = {
   ssm_sdm:'Shared Decision Making', ssm_pr:'Rating of Provider', ssm_chos:'Courteous Office Staff',
   ssm_hpe:'Health Promotion', ssm_spr:'Stewardship of Resources',
 };
+// Program totals as published by CMS, in $ millions (see the reconciliation card for sources)
+const CMS_PUBLISHED = {
+  2021: { medicare: 70.4 },
+  2022: { medicare: 371.1, acos: 484.1 },
+  2023: { gross: 1643, medicare: 694.6, acos: 948.4 },
+  2024: { gross: 2511, medicare: 988.3, acos: 1522 },
+};
 const programName = yr => (yr <= 2022 ? 'GPDC' : 'ACO REACH');
 const signed = (v, d=1, unit='') => v == null || isNaN(v) ? '' : `${v > 0 ? '+' : v < 0 ? '-' : ''}${unit}${Math.abs(v).toFixed(d)}`;
 
@@ -133,7 +140,9 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
       n_savers:       t.n_savers,
       pct_savers:     t.pct_savers,
       avg_sav_rate:   t.avg_sav_rate,
-      prog_sav_rate:  totBnk > 0 ? +((totBnk-totCst)/totBnk*100).toFixed(3) : null,
+      prog_sav_rate:  t.cms_basis_gross_rate ?? (totBnk > 0 ? +((totBnk-totCst)/totBnk*100).toFixed(3) : null),
+      gross_M:        t.cms_basis_gross_M,
+      medicare_M:     t.cms_basis_medicare_M,
       total_shared_M: t.total_shared_savings,
       shared_perbene: totBen > 0 ? +(totSav/totBen).toFixed(2) : null,
       shared_pbpm:    benMon > 0 ? +(totSav/benMon).toFixed(2) : null,
@@ -319,7 +328,7 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
         <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:20}}>
           {[
             {label:'Unique ACOs',          value: fmt.num(new Set(records.map(r=>r.aco_id)).size)},
-            {label:'Total Earned Savings',  value: fmt.dollars(allSavings)},
+            {label:'Net Savings to ACOs, All Years',  value: fmt.dollars(allSavings)},
             {label:`PY ${LATEST} Beneficiaries`, value: fmt.shortNum(records.filter(r=>r.perf_year===LATEST).reduce((s,r)=>s+(r.bene_cnt||0),0))},
             {label:`PY ${LATEST} High Performers`,value:`${records.filter(r=>r.perf_year===LATEST&&r.hpp_flag==='Yes').length} of ${records.filter(r=>r.perf_year===LATEST).length} ACOs`},
           ].map(s => (
@@ -340,12 +349,12 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
           {[
             { title:'ACOs Participating',   value:fmt.num(latest?.n_acos),
               delta:`${(latest?.n_acos-prior?.n_acos)>0?'+':''}${latest?.n_acos-prior?.n_acos} vs PY ${prior?.year}` },
-            { title:'Earned Savings',       value:fmt.dollars(records.filter(r=>r.perf_year===latest?.year).reduce((s,r)=>s+(r.shared_savings||0),0)),
+            { title:'Net Savings to ACOs',  value:fmt.dollars(records.filter(r=>r.perf_year===latest?.year).reduce((s,r)=>s+(r.shared_savings||0),0)),
               delta:`vs ${fmt.dollars(records.filter(r=>r.perf_year===prior?.year).reduce((s,r)=>s+(r.shared_savings||0),0))} in PY ${prior?.year}` },
             { title:'% Earning Savings',    value:`${latest?.pct_savers}%`,
               delta:`${signed(latest?.pct_savers-prior?.pct_savers)} pts vs PY ${prior?.year}` },
-            { title:'Program Savings Rate', value:latest?.prog_sav_rate!=null?`${latest.prog_sav_rate.toFixed(2)}%`:'—',
-              note:'(Σ Benchmark − Σ Expense) ÷ Σ Benchmark',
+            { title:'Gross Savings Rate', value:latest?.prog_sav_rate!=null?`${latest.prog_sav_rate.toFixed(2)}%`:'—',
+              note:'CMS basis',
               delta:prior?.prog_sav_rate!=null?`${signed(latest?.prog_sav_rate-prior?.prog_sav_rate, 2)} pts vs PY ${prior?.year}`:''},
             { title:'Assigned Beneficiaries', value:fmt.shortNum(latest?.total_benes),
               delta:`${latest?.total_benes>=prior?.total_benes?'+':'-'}${fmt.shortNum(Math.abs(latest?.total_benes-prior?.total_benes))} vs PY ${prior?.year}` },
@@ -360,6 +369,55 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
               {k.delta&&<div style={{fontSize:11,color:'var(--gray-500)',marginTop:4}}>{k.delta}</div>}
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Reconciliation with CMS published totals */}
+      <div className="chart-card">
+        <div className="chart-title">How These Totals Compare With CMS's Published Results</div>
+        <div className="chart-subtitle">
+          CMS reports gross savings against the benchmark before the Global discount and splits it into net savings
+          to Medicare and net savings to ACOs. This explorer rebuilds the same split from the ACO-level public use
+          file. CMS describes that file as results prior to final settlement, so small differences remain.
+        </div>
+        <div className="table-scroll" style={{marginTop:12}}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Year</th>
+                <th style={{textAlign:'right'}}>Gross savings: CMS</th>
+                <th style={{textAlign:'right'}}>Gross savings: this tool</th>
+                <th style={{textAlign:'right'}}>Net to Medicare: CMS</th>
+                <th style={{textAlign:'right'}}>Net to Medicare: this tool</th>
+                <th style={{textAlign:'right'}}>Net to ACOs: CMS</th>
+                <th style={{textAlign:'right'}}>Net to ACOs: this tool</th>
+              </tr>
+            </thead>
+            <tbody>
+              {chartData.map(t => {
+                const pub = CMS_PUBLISHED[t.year] || {};
+                const m = v => v == null ? '—' : fmt.dollars(v * 1e6);
+                return (
+                  <tr key={t.year}>
+                    <td><strong>PY {t.year}</strong></td>
+                    <td style={{textAlign:'right'}}>{m(pub.gross)}</td>
+                    <td style={{textAlign:'right'}}>{m(t.gross_M)}</td>
+                    <td style={{textAlign:'right'}}>{m(pub.medicare)}</td>
+                    <td style={{textAlign:'right'}}>{m(t.medicare_M)}</td>
+                    <td style={{textAlign:'right'}}>{m(pub.acos)}</td>
+                    <td style={{textAlign:'right'}}>{m(t.total_shared_M)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div style={{marginTop:8,fontSize:11,color:'var(--gray-500)',lineHeight:1.6}}>
+          This tool: gross savings = Σ (final benchmark ÷ (1 − discount) + equity adjustment) − Σ total cost of care;
+          net to ACOs = Σ shared savings; net to Medicare = the difference. CMS figures: ACO REACH PY 2023 and PY 2024
+          Financial and Quality Results fact sheets; PY 2021 and PY 2022 Medicare savings as reported in the PY 2024 results summary.
+          The ACO-level savings rates elsewhere in this tool are CMS's published SAV_RATE field, measured against the final
+          benchmark after the discount.
         </div>
       </div>
 
@@ -524,10 +582,10 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
 
       {/* Program Savings Rate — dual axis */}
       <div className="chart-card">
-        <div className="chart-title">Program Savings Rate</div>
+        <div className="chart-title">Program Gross Savings Rate</div>
         <div className="chart-subtitle">
-          (Σ Benchmark − Σ Total Cost) ÷ Σ Benchmark: the program-level rate, weighted by ACO size (left axis).
-          Share of ACOs earning savings on the right axis.
+          Gross savings as a share of the benchmark before the Global discount, the basis CMS uses for its
+          published results (left axis). Share of ACOs earning savings on the right axis.
         </div>
         <ResponsiveContainer width="100%" height={230}>
           <ComposedChart data={chartData} margin={{top:8,right:56,left:0,bottom:0}}>
@@ -551,7 +609,7 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
               );
             }}/>
             <Legend wrapperStyle={{fontSize:11}}/>
-            <Bar yAxisId="left" dataKey="prog_sav_rate" name="Program Savings Rate" radius={[3,3,0,0]}>
+            <Bar yAxisId="left" dataKey="prog_sav_rate" name="Gross Savings Rate" radius={[3,3,0,0]}>
               {chartData.map((d,i)=><Cell key={i} fill={d.prog_sav_rate>=0?COLORS.teal:COLORS.red}/>)}
             </Bar>
             <Line yAxisId="right" type="monotone" dataKey="pct_savers" name="% ACOs Saving"
@@ -805,8 +863,8 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
           {[
             {label:'ACOs',           value:selTrend?.n_acos},
             {label:'Savers',         value:`${selTrend?.n_savers} (${selTrend?.pct_savers}%)`},
-            {label:'Program Sav Rate',value:selTrend?.prog_sav_rate!=null?`${selTrend.prog_sav_rate.toFixed(2)}%`:'—'},
-            {label:'Shared Savings', value:fmt.dollars(selSavings)},
+            {label:'Gross Savings Rate',value:selTrend?.prog_sav_rate!=null?`${selTrend.prog_sav_rate.toFixed(2)}%`:'—'},
+            {label:'Net to ACOs', value:fmt.dollars(selSavings)},
             {label:'Avg Quality',    value:selTrend?.avg_qual!=null?`${Number(selTrend.avg_qual).toFixed(1)}%`:'—'},
           ].map(s => (
             <div key={s.label}>
@@ -1077,8 +1135,8 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
                 <th>Program</th>
                 <th style={{textAlign:'right'}}>ACOs</th>
                 <th style={{textAlign:'right'}}>Beneficiaries</th>
-                <th style={{textAlign:'right'}}>Prog Sav Rate</th>
-                <th style={{textAlign:'right'}}>Shared Savings</th>
+                <th style={{textAlign:'right'}}>Gross Sav Rate</th>
+                <th style={{textAlign:'right'}}>Net to ACOs</th>
                 <th style={{textAlign:'right'}}>% Savers</th>
                 <th style={{textAlign:'right'}}>Avg Quality</th>
                 <th>Key Change</th>
