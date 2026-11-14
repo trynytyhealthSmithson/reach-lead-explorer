@@ -1,29 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="ACO REACH → LEAD Explorer: Interactive analysis of ACO REACH performance data and the LEAD Model transition. Built by TRYNYTY health:enablement." />
-  <title>ACO REACH → LEAD Explorer | TRYNYTY health:enablement</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <!-- Google Analytics -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-GZG2KKV4BG"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-GZG2KKV4BG', {
-      linker: {
-        domains: ['www.trynytyhealth.com', 'mssppuf.trynytyhealth.com']
-      }
-    });
-  </script>
-  <!-- Vercel Analytics -->
-  <script defer src="/_vercel/insights/script.js"></script>
-</head>
-<body>
-  <noscript>You need to enable JavaScript to run this app.</noscript>
-  <div id="root"></div>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0B1829" />
+    <meta name="description" content="Free explorer for every ACO REACH (formerly GPDC) ACO, PY 2021 through 2024: savings against benchmarks, quality, patient experience, capitation and utilization, reconciled to CMS published results." />
+    <title>ACO REACH Explorer | TRYNYTY health:enablement</title>
+    <link rel="icon" href="%PUBLIC_URL%/favicon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="TRYNYTY health:enablement" />
+    <meta property="og:title" content="ACO REACH Explorer | TRYNYTY health:enablement" />
+    <meta property="og:description" content="Every ACO REACH ACO from PY 2021 through 2024: savings, quality, capitation and peers. Free, no login." />
+    <meta property="og:url" content="https://reachpuf.trynytyhealth.com/" />
+    <meta name="twitter:card" content="summary" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GZG2KKV4BG"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-GZG2KKV4BG', {
+        linker: {
+          domains: ['trynytyhealth.com', 'www.trynytyhealth.com', 'mssppuf.trynytyhealth.com', 'maenroll.trynytyhealth.com', 'hospitals.trynytyhealth.com', 'physicians.trynytyhealth.com']
+        }
+      });
+    </script>
+    <!-- Vercel Analytics -->
+    <script defer src="/_vercel/insights/script.js"></script>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
 </html>

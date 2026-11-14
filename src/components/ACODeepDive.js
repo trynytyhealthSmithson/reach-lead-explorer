@@ -4,7 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, Cell,
 } from 'recharts';
-import { fmt, COLORS, CONFIG_COLORS, CONFIG_LABELS, CAHPS_LABELS } from '../utils';
+import { fmt, COLORS, CONFIG_COLORS, CONFIG_LABELS, CAHPS_LABELS, ordinal } from '../utils';
 import acoList from '../data/reach_aco_list.json';
 import { generateACOReport } from '../generateACOReport';
 
@@ -95,6 +95,8 @@ const KPICard = ({ title, value, sub, color, note }) => (
   </div>
 );
 
+const MONTHS = { 2021: 9 };
+
 // ── BenchmarkModeToggle: combined benchmark + savings rate chart ─────────────
 
 function BenchmarkModeToggle({ acoRecords }) {
@@ -102,7 +104,7 @@ function BenchmarkModeToggle({ acoRecords }) {
 
   const data = useMemo(() => acoRecords.map(r => {
     const b = r.bene_cnt || 1;
-    const m = r.perf_year === 2021 ? 9 : 12;
+    const m = (MONTHS[r.perf_year] || 12);
     const div = mode==='total' ? 1 : mode==='perbene' ? b : b * m;
     return {
       year:        r.perf_year,
@@ -170,7 +172,7 @@ function SpendCategoryChart({ acoRecords }) {
 
   const data = useMemo(() => acoRecords.map(r => {
     const b = r.bene_cnt || 1;
-    const m = r.perf_year === 2021 ? 9 : 12;
+    const m = (MONTHS[r.perf_year] || 12);
     const div = mode==='pbpm' ? b*m : mode==='perbene' ? b : 1;
     const f   = v => v!=null ? +(v/div).toFixed(mode==='aggregate'?0:2) : null;
     return {
@@ -229,14 +231,15 @@ function CapitationBreakdownCard({ acoRecords }) {
   const fmtVal = (val, r) => {
     if (val == null) return '—';
     const b = r.bene_cnt || 1;
-    const m = r.perf_year === 2021 ? 9 : 12;
+    const m = (MONTHS[r.perf_year] || 12);
     if (capMode === 'aggregate') return `$${(val/1e6).toFixed(1)}M`;
     if (capMode === 'perbene')   return `$${(val/b).toLocaleString(undefined,{maximumFractionDigits:0})}`;
     return `$${(val/(b*m)).toFixed(2)}`;
   };
 
+  const payTot = r => ((r.cap_pmt||0) + (r.epcc_pmt||0) + (r.clm_pmt||0)) || 1;
   const capData = acoRecords.map(r => {
-    const tot = r.tot_cost_care || 1;
+    const tot = payTot(r);
     return {
       year: r.perf_year,
       'CAP (PCC)':  r.cap_pmt  != null ? +(r.cap_pmt/tot*100).toFixed(1)  : null,
@@ -246,12 +249,12 @@ function CapitationBreakdownCard({ acoRecords }) {
   });
 
   const CAPS = [
-    { label:'CAP — Primary Care Capitation', key:'cap_pmt', color:COLORS.teal,
-      note:'Monthly capitation for PCP services aligned to historical PCP spend. All PCC-arrangement ACOs receive this payment.' },
-    { label:'ePCC — Enhanced PCC Capitation', key:'epcc_pmt', color:COLORS.green,
-      note:'Additional capitation for ACOs electing Enhanced PCC — a bonus encouraging greater PCP utilization. Only flows to Enhanced PCC electors.' },
-    { label:'CLM — Traditional Claims', key:'clm_pmt', color:COLORS.blue,
-      note:'Fee-for-service claims outside capitation. Dominant payment type (~95% of total). APO modifies how non-PCP PCP services are structured within this category.' },
+    { label:'CAP: Primary Care Capitation', key:'cap_pmt', color:COLORS.teal,
+      note:'Total primary care capitation amount as published in the PUF (CAP_PMT_AMT).' },
+    { label:'ePCC: Enhanced PCC Amount', key:'epcc_pmt', color:COLORS.green,
+      note:'Total enhanced PCC amount (EPCC_PMT_AMT). Paid to ACOs that elected Enhanced Primary Care Capitation.' },
+    { label:'CLM: Claims Payments', key:'clm_pmt', color:COLORS.blue,
+      note:'Total aggregate claim payment amount (CLM_PMT_AMT): fee-for-service claims paid outside capitation.' },
   ];
 
   return (
@@ -277,7 +280,7 @@ function CapitationBreakdownCard({ acoRecords }) {
               letterSpacing:'0.06em', marginBottom:10 }}>{p.label}</div>
             {acoRecords.map(r => {
               const val = r[p.key];
-              const tot = r.tot_cost_care || 1;
+              const tot = payTot(r);
               const pct = val != null ? (val/tot*100).toFixed(1) : null;
               return (
                 <div key={r.perf_year} style={{ display:'flex', justifyContent:'space-between',
@@ -303,7 +306,7 @@ function CapitationBreakdownCard({ acoRecords }) {
       </div>
       <div style={{ marginTop:16 }}>
         <div style={{ fontSize:12, color:'var(--gray-500)', marginBottom:8, fontWeight:500 }}>
-          Payment mix as % of total cost of care
+          Payment mix: each channel's share of capitation plus claims payments
         </div>
         <ResponsiveContainer width="100%" height={180}>
           <BarChart data={capData} margin={{ top:4, right:12, left:0, bottom:0 }}>
@@ -390,7 +393,7 @@ function computeRVM(curr, prev) {
 
 export default function ACODeepDive({
   perfData, initialACO, initialVersion,
-  pinnedACO, pinACO, unpinACO, goToLEAD
+  pinnedACO, pinACO, unpinACO
 }) {
   const [selectedACO, setSelectedACO] = useState(null);
   const [activeTab,   setActiveTab]   = useState('overview');
@@ -409,7 +412,7 @@ export default function ACODeepDive({
       setReportStatus(null);
     } catch (err) {
       console.error('Report generation failed:', err);
-      setReportStatus('Error — please try again');
+      setReportStatus('Error, please try again');
       setTimeout(() => setReportStatus(null), 3000);
     }
   };
@@ -501,10 +504,10 @@ export default function ACODeepDive({
           <div className="chart-title" style={{ marginBottom:16 }}>Search for an ACO</div>
           <ACOSearch onSelect={(a) => { setSelectedACO(a); setActiveTab('overview'); }} />
           {pinnedACO && (
-            <div style={{ marginTop:14, padding:'12px 14px', background:'rgba(221,170,102,0.12)',
-              borderRadius:'var(--radius)', border:'1px solid rgba(221,170,102,0.3)' }}>
+            <div style={{ marginTop:14, padding:'12px 14px', background:'rgba(201,154,59,0.12)',
+              borderRadius:'var(--radius)', border:'1px solid rgba(201,154,59,0.3)' }}>
               <div style={{ fontSize:10, fontWeight:700, color:'var(--gold)', textTransform:'uppercase',
-                letterSpacing:'0.08em', marginBottom:4 }}>📌 Pinned ACO</div>
+                letterSpacing:'0.08em', marginBottom:4 }}>Pinned ACO</div>
               <div style={{ fontWeight:600, color:'var(--navy)', marginBottom:6 }}>{pinnedACO.aco_name}</div>
               <button onClick={() => { setSelectedACO(pinnedACO); setActiveTab('overview'); }}
                 style={{ padding:'5px 14px', borderRadius:'var(--radius)', fontSize:12,
@@ -516,9 +519,9 @@ export default function ACODeepDive({
         </div>
         {/* Quick-select for multi-year ACOs */}
         <div className="chart-card">
-          <div className="chart-title" style={{ marginBottom:10 }}>Multi-Year ACOs</div>
+          <div className="chart-title" style={{ marginBottom:10 }}>ACOs in Every Performance Year ({(perfData?.years||[]).length} years)</div>
           <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-            {sortedACOs.filter(a => a.years_count === 3).map(a => (
+            {sortedACOs.filter(a => a.years_count === (perfData?.years||[]).length).map(a => (
               <button key={a.aco_id}
                 onClick={() => { setSelectedACO(a); setActiveTab('overview'); }}
                 style={{ padding:'4px 10px', fontSize:11, borderRadius:20, cursor:'pointer',
@@ -573,7 +576,7 @@ export default function ACODeepDive({
                   </span>
                   {latest.enhanced_pcc==='Yes' && (
                     <span style={{ fontSize:10, padding:'2px 8px', borderRadius:12, fontWeight:600,
-                      background:'rgba(46,148,120,0.3)', color:COLORS.teal }}>ePCC</span>
+                      background:'rgba(23,138,132,0.3)', color:COLORS.teal }}>ePCC</span>
                   )}
                   {latest.stop_loss==='Yes' && (
                     <span style={{ fontSize:10, padding:'2px 8px', borderRadius:12, fontWeight:600,
@@ -581,7 +584,7 @@ export default function ACODeepDive({
                   )}
                   {latest.hpp_flag==='Yes' && (
                     <span style={{ fontSize:10, padding:'2px 8px', borderRadius:12, fontWeight:700,
-                      background:`${COLORS.gold}33`, color:COLORS.gold }}>🏆 HPP</span>
+                      background:`${COLORS.gold}33`, color:COLORS.gold }}>HPP</span>
                   )}
                   {latest.cisep_flag==='Yes' && (
                     <span style={{ fontSize:10, padding:'2px 8px', borderRadius:12, fontWeight:600,
@@ -603,7 +606,7 @@ export default function ACODeepDive({
                 style={{ padding:'6px 12px', borderRadius:'var(--radius)', fontSize:11,
                   background:`${COLORS.gold}22`, color:COLORS.gold, fontWeight:700,
                   border:`1px solid ${COLORS.gold}44`, cursor:'pointer' }}>
-                📌 Pinned
+                Pinned
               </button>
             ) : (
               <button onClick={() => pinACO && pinACO({
@@ -632,7 +635,7 @@ export default function ACODeepDive({
                 style={{ padding:'6px 12px', borderRadius:'var(--radius)', fontSize:11,
                   background:'rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.6)',
                   border:'1px solid rgba(255,255,255,0.15)', cursor:'pointer' }}>
-                📌 Pin ACO
+                Pin ACO
               </button>
             )}
             <button onClick={handleExportReport}
@@ -642,13 +645,7 @@ export default function ACODeepDive({
                 color: reportStatus ? 'rgba(255,255,255,0.5)' : 'var(--navy)',
                 border:'none', cursor: reportStatus ? 'default' : 'pointer',
                 minWidth:160, transition:'all 0.2s' }}>
-              {reportStatus || '📄 Export Report →'}
-            </button>
-            <button onClick={goToLEAD}
-              style={{ padding:'6px 14px', borderRadius:'var(--radius)', fontSize:11, fontWeight:700,
-                background:`${COLORS.gold}`, color:'var(--navy)',
-                border:'none', cursor:'pointer' }}>
-              LEAD Transition →
+              {reportStatus || 'Download PowerPoint'}
             </button>
           </div>
         </div>
@@ -731,7 +728,7 @@ export default function ACODeepDive({
                   {label:'APO Election',         value:latest?.apo_election||'—', good:latest?.apo_election==='Yes'},
                   {label:'Discount Rate',        value:latest?.discount!=null?`${latest.discount.toFixed(0)}%`:'—'},
                   {label:'First Part Year',      value:`PY ${aco.first_part_year||'—'}`},
-                  {label:'Years Participating',  value:`${acoRecords.length} of 3`},
+                  {label:'Years Participating',  value:`${acoRecords.length} of ${(perfData?.years||[]).length}`},
                 ].map(row => (
                   <div key={row.label} style={{ display:'flex', justifyContent:'space-between',
                     alignItems:'center', padding:'5px 0', borderBottom:'1px solid var(--gray-100)' }}>
@@ -751,11 +748,17 @@ export default function ACODeepDive({
                   {CONFIG_LABELS[latest?.config_key]||latest?.config_key}
                 </div>
                 <div style={{ fontSize:11, color:'var(--gray-600)', lineHeight:1.5 }}>
-                  {latest?.config_key==='Global/TCC'
-                    ? 'Full Medicare payment flow. Eligible for CARA episode arrangements in LEAD. Highest-performing configuration historically (6.4% avg, 93% savers in PY2023).'
+                  {(latest?.config_key==='Global/TCC'
+                    ? 'Global risk (100% of savings and losses) with Total Care Capitation: CMS pays the ACO a monthly capitation covering most services furnished by its participant providers.'
                     : latest?.config_key==='Global/PCC'
-                    ? 'Primary care capitation with traditional claims for specialists. Most common configuration (78 ACOs PY2023). Avg 5.2% savings rate in PY2023.'
-                    : 'Professional risk — 50% of savings/losses. Lower risk but also lower upside. Avg 2.2% savings in PY2023. LEAD Professional track equivalent.'}
+                    ? 'Global risk (100% of savings and losses) with Primary Care Capitation; other services are paid through fee-for-service claims.'
+                    : 'Professional risk (50% of savings and losses) with Primary Care Capitation.')}
+                  {(() => {
+                    const g = records.filter(r => r.perf_year===latest?.perf_year && r.config_key===latest?.config_key && r.sav_rate!=null);
+                    if (!g.length) return null;
+                    const avg = g.reduce((s,r)=>s+r.sav_rate,0)/g.length;
+                    return ` In PY ${latest.perf_year}, ${g.length} ACOs used this configuration and averaged a ${avg.toFixed(1)}% savings rate.`;
+                  })()}
                 </div>
               </div>
             </div>
@@ -767,7 +770,7 @@ export default function ACODeepDive({
               </div>
               {[
                 { label:'Savings Rate',     val:latest?.sav_rate,     peerKey:'sav_rate',     fmt_:v=>`${v.toFixed(2)}%`,  lowerBetter:false },
-                { label:'Avg Expense PBPM', val:latest?.bene_cnt&&latest?.tot_cost_care?latest.tot_cost_care/latest.bene_cnt/(latest.perf_year===2021?9:12):null,
+                { label:'Avg Expense PBPM', val:latest?.bene_cnt&&latest?.tot_cost_care?latest.tot_cost_care/latest.bene_cnt/(MONTHS[latest.perf_year]||12):null,
                   peerKey:null, fmt_:v=>`$${v.toFixed(0)}`, lowerBetter:true },
                 { label:'Quality Score',    val:latest?.qual_scr,     peerKey:'qual_scr',     fmt_:v=>`${v.toFixed(1)}%`,  lowerBetter:false },
                 { label:'ACR (readmit)',    val:latest?.acr_scr,      peerKey:'acr_scr',      fmt_:v=>v.toFixed(2),         lowerBetter:true  },
@@ -794,7 +797,7 @@ export default function ACODeepDive({
                       <div style={{ fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:8,
                         background: (row.lowerBetter!==false?pct<40:pct>60) ? `${COLORS.green}18` : (row.lowerBetter!==false?pct>60:pct<40)?`${COLORS.red}18`:'var(--gray-100)',
                         color: (row.lowerBetter!==false?pct<40:pct>60) ? COLORS.green : (row.lowerBetter!==false?pct>60:pct<40)?COLORS.red:'var(--gray-500)' }}>
-                        {pct}th pct
+                        {ordinal(pct)} pct
                       </div>
                     )}
                   </div>
@@ -807,7 +810,7 @@ export default function ACODeepDive({
           <div className="chart-card">
             <div className="chart-title">Benchmark vs. Actual Expense</div>
             <div className="chart-subtitle">
-              Benchmark (blue) vs Total Cost (red) — gap = gross savings. Bars = savings rate (right axis).
+              Benchmark (blue) vs Total Cost (red); the gap is gross savings. Bars = savings rate (right axis).
             </div>
             <BenchmarkModeToggle acoRecords={acoRecords} />
           </div>
@@ -931,8 +934,8 @@ export default function ACODeepDive({
                           </React.Fragment>
                         );
                       }
-                      const note = r.tier==='volume'?'Volume only — no spend field'
-                                 : r.tier==='spend' ?'Spend trend — no util rate'
+                      const note = r.tier==='volume'?'Volume only: no spend field'
+                                 : r.tier==='spend' ?'Spend trend: no utilization rate'
                                  : r.tier==='metric'?'Metric (not $ component)'
                                  : r.tier==='mix'   ?'Mix sub-type':'';
                       return (
@@ -999,7 +1002,7 @@ export default function ACODeepDive({
           {/* SNF deep dive */}
           <div className="chart-card">
             <div className="chart-title">SNF Deep Dive</div>
-            <div className="chart-subtitle">SNF is the post-acute cost driver most targeted by LEAD's CARA episode arrangements</div>
+            <div className="chart-subtitle">Skilled nursing admissions, length of stay and payment per stay, compared with configuration peers</div>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginTop:12 }}>
               {[
                 {label:'SNF Admits/1K', key:'p_snf_adm',     fmt_: v=>`${v.toFixed(1)}`},
@@ -1012,7 +1015,6 @@ export default function ACODeepDive({
                     textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>{m.label}</div>
                   {acoRecords.map(r => {
                     const v = r[m.key];
-                    const peer = peerAvg(m.key);
                     return (
                       <div key={r.perf_year} style={{ display:'flex', justifyContent:'space-between',
                         alignItems:'center', marginBottom:4 }}>
@@ -1047,7 +1049,7 @@ export default function ACODeepDive({
           <div className="chart-card">
             <div className="chart-title">Quality Score Trend</div>
             <div className="chart-subtitle">
-              PY2021: 100% under pay-for-reporting · PY2023: shift to pay-for-performance
+              PY 2021 and PY 2022 were largely pay-for-reporting; quality became pay-for-performance in PY 2023
             </div>
             <div className="grid-2">
               <ResponsiveContainer width="100%" height={200}>
@@ -1105,23 +1107,25 @@ export default function ACODeepDive({
 
           {/* CAHPS SSM */}
           <div className="chart-card">
-            <div className="chart-title">CAHPS SSM — Patient Experience Measures</div>
+            <div className="chart-title">CAHPS Patient Experience Measures</div>
             <div className="chart-subtitle">
-              PY2022 and PY2023 only. All 0–100 scale, higher = better. Vertical bar = peer average for same configuration.
+              Summary survey measures, PY 2022 onward. 0 to 100 scale, higher is better. Vertical bar = peer average for the same configuration in PY {latest?.perf_year}.
             </div>
             {(() => {
               const hasData = acoRecords.some(r => r.ssm_taci != null || r.ssm_com != null);
               if (!hasData) return (
                 <div style={{padding:'20px',textAlign:'center',color:'var(--gray-400)',fontSize:12,
                   background:'var(--gray-50)',borderRadius:'var(--radius)'}}>
-                  CAHPS SSM data not available for this ACO (PY2021 only or insufficient survey responses).
+                  CAHPS results are not available for this ACO (PY 2021 only, or too few survey responses).
                 </div>
               );
+              const cy = acoRecords.filter(r => r.ssm_taci != null || r.ssm_com != null).map(r => r.perf_year);
+              const yB = cy[cy.length-1], yA = cy.length > 1 ? cy[cy.length-2] : null;
               return (
                 <div>
                   {Object.entries(CAHPS_LABELS).map(([key, label]) => {
-                    const val22 = acoRecords.find(r=>r.perf_year===2022)?.[key];
-                    const val23 = acoRecords.find(r=>r.perf_year===2023)?.[key];
+                    const val22 = yA!=null ? acoRecords.find(r=>r.perf_year===yA)?.[key] : null;
+                    const val23 = acoRecords.find(r=>r.perf_year===yB)?.[key];
                     const peer  = peerAvg(key);
                     if (val22==null && val23==null) return null;
                     const latestVal = val23 ?? val22;
@@ -1131,14 +1135,14 @@ export default function ACODeepDive({
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
                           <span style={{fontSize:13,fontWeight:600,color:'var(--navy)'}}>{label}</span>
                           <div style={{display:'flex',gap:16,alignItems:'center'}}>
-                            {val22!=null && <span style={{fontSize:11,color:'var(--gray-400)'}}>PY22: {val22.toFixed(1)}%</span>}
+                            {val22!=null && <span style={{fontSize:11,color:'var(--gray-400)'}}>PY {yA}: {val22.toFixed(1)}</span>}
                             {val23!=null && (
                               <span style={{fontSize:14,fontWeight:700,
                                 color:better===true?COLORS.green:better===false?COLORS.red:'var(--navy)'}}>
-                                PY23: {val23.toFixed(1)}%
+                                PY {yB}: {val23.toFixed(1)}
                               </span>
                             )}
-                            {peer!=null && <span style={{fontSize:11,color:'var(--gray-400)'}}>Peer: {peer.toFixed(1)}%</span>}
+                            {peer!=null && <span style={{fontSize:11,color:'var(--gray-400)'}}>Peer: {peer.toFixed(1)}</span>}
                           </div>
                         </div>
                         <div style={{position:'relative',height:14,background:'var(--gray-100)',borderRadius:7}}>
@@ -1156,10 +1160,10 @@ export default function ACODeepDive({
                   })}
                   <div style={{display:'flex',gap:16,marginTop:10,fontSize:11,color:'var(--gray-500)'}}>
                     <div style={{display:'flex',alignItems:'center',gap:5}}>
-                      <div style={{width:12,height:8,borderRadius:3,background:COLORS.blue+'66'}}/> PY2022
+                      {yA!=null && <><div style={{width:12,height:8,borderRadius:3,background:COLORS.blue+'66'}}/> PY {yA}</>}
                     </div>
                     <div style={{display:'flex',alignItems:'center',gap:5}}>
-                      <div style={{width:12,height:8,borderRadius:3,background:COLORS.teal}}/> PY2023
+                      <div style={{width:12,height:8,borderRadius:3,background:COLORS.teal}}/> PY {yB}
                     </div>
                     <div style={{display:'flex',alignItems:'center',gap:5}}>
                       <div style={{width:2,height:12,background:COLORS.navy,opacity:0.5}}/> Peer avg
@@ -1173,7 +1177,7 @@ export default function ACODeepDive({
           {/* CI/SEP and HPP */}
           <div className="chart-card">
             <div className="chart-title">CI/SEP & High Performers Pool Status</div>
-            <div className="chart-subtitle">Quality achievement flags — PY2023 only. Both carry forward into LEAD.</div>
+            <div className="chart-subtitle">Quality flags reported from PY 2023 onward, shown for PY {latest?.perf_year}.</div>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:14 }}>
               <div style={{ padding:'18px', borderRadius:'var(--radius)',
                 border:`2px solid ${latest?.cisep_flag==='Yes'?COLORS.green:COLORS.gray}`,
@@ -1181,16 +1185,19 @@ export default function ACODeepDive({
                 <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase',
                   letterSpacing:'0.06em', marginBottom:8,
                   color: latest?.cisep_flag==='Yes'?COLORS.green:'var(--gray-500)' }}>
-                  CI/SEP — Continuous Improvement / Sustained Exceptional Performance
+                  CI/SEP: Continuous Improvement / Sustained Exceptional Performance
                 </div>
                 <div style={{ fontSize:32, fontWeight:800,
                   color: latest?.cisep_flag==='Yes'?COLORS.green:COLORS.gray }}>
                   {latest?.cisep_flag||'N/A'}
                 </div>
                 <div style={{ fontSize:12, color:'var(--gray-600)', marginTop:8, lineHeight:1.5 }}>
-                  {latest?.cisep_flag==='Yes'
-                    ? 'CI/SEP ACOs averaged 5.80% savings vs 1.07% for non-CI/SEP in PY2023 — a 5.4x difference. CI/SEP is required for HPP eligibility.'
-                    : 'CI/SEP only available in PY2023. Requires meeting quality improvement thresholds. Strong CI/SEP performance strengthens LEAD applications.'}
+                  {(() => {
+                    const yr = records.filter(r => r.perf_year===latest?.perf_year);
+                    const avg = rs => { const v = rs.filter(r=>r.sav_rate!=null); return v.length ? (v.reduce((s,r)=>s+r.sav_rate,0)/v.length).toFixed(2) : '—'; };
+                    if (latest?.cisep_flag == null) return 'Not assessed for this ACO in this year. CI/SEP is assessed only for ACOs that also participated in the prior performance year.';
+                    return `In PY ${latest.perf_year}, ACOs that met CI/SEP averaged ${avg(yr.filter(r=>r.cisep_flag==='Yes'))}% savings vs ${avg(yr.filter(r=>r.cisep_flag==='No'))}% for assessed ACOs that did not.`;
+                  })()}
                 </div>
               </div>
               <div style={{ padding:'18px', borderRadius:'var(--radius)',
@@ -1199,16 +1206,19 @@ export default function ACODeepDive({
                 <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase',
                   letterSpacing:'0.06em', marginBottom:8,
                   color: latest?.hpp_flag==='Yes'?COLORS.gold:'var(--gray-500)' }}>
-                  HPP — High Performers Pool
+                  HPP: High Performers Pool
                 </div>
                 <div style={{ fontSize:32, fontWeight:800,
                   color: latest?.hpp_flag==='Yes'?COLORS.gold:COLORS.gray }}>
                   {latest?.hpp_flag||'N/A'}
                 </div>
                 <div style={{ fontSize:12, color:'var(--gray-600)', marginTop:8, lineHeight:1.5 }}>
-                  {latest?.hpp_flag==='Yes'
-                    ? '🏆 HPP qualifier. Only 24 of 132 ACOs (18%) qualified. HPP ACOs averaged 8.27% savings and earned $408M — 44% of all PY2023 savings.'
-                    : 'HPP launched in PY2023. Requires CI/SEP + above HPP threshold. Carries into LEAD as sustained high-performance incentive.'}
+                  {(() => {
+                    const yr = records.filter(r => r.perf_year===latest?.perf_year);
+                    const n = yr.filter(r => r.hpp_flag==='Yes').length;
+                    if (latest?.hpp_flag == null) return 'Not assessed for this ACO in this year.';
+                    return `${latest.hpp_flag==='Yes'?'This ACO qualified for the High Performers Pool bonus. ':''}${n} of ${yr.length} ACOs qualified in PY ${latest.perf_year}.`;
+                  })()}
                 </div>
               </div>
             </div>
@@ -1355,18 +1365,16 @@ export default function ACODeepDive({
                 <div style={{fontSize:10,fontWeight:700,
                   color:latest?.apo_election==='Yes'?COLORS.teal:'var(--gray-500)',
                   textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:8}}>
-                  APO — Advanced Payment Option
+                  APO: Advanced Payment Option
                 </div>
                 <div style={{fontSize:22,fontWeight:800,
                   color:latest?.apo_election==='Yes'?COLORS.teal:COLORS.gray,marginBottom:4}}>
                   {latest?.apo_election==='Yes'?'Elected':'Not Elected'}
                 </div>
                 <div style={{fontSize:12,color:'var(--gray-600)',lineHeight:1.5}}>
-                  An advance capitation payment arrangement for non-PCP services provided by PCPs.
-                  APO supplements the primary care capitation (CAP) payment.
-                  {latest?.apo_election==='Yes'
-                    ? ' In PY2023, APO-electing ACOs averaged 4.91% savings vs 4.42% for non-APO ACOs.'
-                    : ' Not elected by this ACO.'}
+                  Prospective monthly payments for non-primary-care services, in place of part of
+                  fee-for-service claims payments, available to ACOs with Primary Care Capitation.
+                  {latest?.apo_election==='Yes' ? ' Elected by this ACO.' : ' Not elected by this ACO.'}
                 </div>
               </div>
               <div style={{padding:'14px',
@@ -1384,7 +1392,8 @@ export default function ACODeepDive({
                 </div>
                 <div style={{fontSize:12,color:'var(--gray-600)',lineHeight:1.5}}>
                   ACO election to participate in the Alignment Plus arrangement.
-                  In PY2023, 122 of 132 ACOs (92%) elected Alignment Plus.
+                  {(() => { const yr = records.filter(r=>r.perf_year===latest?.perf_year); const n = yr.filter(r=>r.alignment_plus==='Yes').length;
+                    return ` In PY ${latest?.perf_year}, ${n} of ${yr.length} ACOs elected it.`; })()}
                   {latest?.alignment_plus==='Yes'
                     ? ' This ACO participates in Alignment Plus.'
                     : ' This ACO does not participate in Alignment Plus.'}
@@ -1394,28 +1403,28 @@ export default function ACODeepDive({
             <div style={{marginTop:12,padding:'10px 14px',background:'var(--gray-50)',
               borderRadius:'var(--radius)',fontSize:11,color:'var(--gray-600)'}}>
               <strong>Note:</strong> The REACH PUF does not report the split between claims-based
-              and voluntary beneficiary alignment. CAP = primary care capitation for PCP services ·
-              APO = advance for non-PCP services by PCPs · ePCC = enhanced bonus for PCP utilization.
+              and voluntary beneficiary alignment. CAP = primary care capitation · ePCC = enhanced primary
+              care capitation · APO = Advanced Payment Option · CLM = fee-for-service claims payments.
             </div>
           </div>
 
-          {/* Concurrent risk score (PY2023 only) */}
+          {/* Risk scores (published from PY2023) */}
           {latest?.norm_risk_score && (
             <div className="chart-card" style={{ borderLeft:'4px solid var(--teal)' }}>
-              <div className="chart-title">Concurrent Risk Score Adjustment (PY2023)</div>
+              <div className="chart-title">Risk Score (PY {latest.perf_year})</div>
               <div className="chart-subtitle">
-                REACH introduced concurrent risk adjustment — benchmarks adjust in real-time based on
-                actual patient mix rather than historical claims. Available PY2023 only.
+                Published from PY 2023. High Needs ACOs are risk adjusted with a concurrent model (current-year
+                diagnoses); other ACOs use a prospective model (prior-year diagnoses).
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginTop:14 }}>
                 {[
                   {label:'Normalized Risk Score', value:latest.norm_risk_score.toFixed(4),
-                    note:'Final risk score after normalization (1.0 = avg population)'},
-                  {label:'CIF-Capped Risk Score', value:latest.cif_cap_risk?.toFixed(4)||'—',
-                    note:'Risk score after applying the Coding Intensity Factor cap'},
-                  {label:'Concurrent Adj Impact', value:latest.norm_risk_score&&latest.cif_cap_risk
-                    ?(latest.norm_risk_score-latest.cif_cap_risk).toFixed(4):'—',
-                    note:'Difference = portion of risk score adjusted by concurrent methodology'},
+                    note:'Normalized weighted average risk score'},
+                  {label:'After CIF and Cap', value:latest.cif_cap_risk?.toFixed(4)||'—',
+                    note:'Normalized risk score adjusted for the coding intensity factor (CIF) and the risk score cap'},
+                  {label:'Effect of CIF and Cap', value:latest.norm_risk_score&&latest.cif_cap_risk
+                    ?`${((latest.cif_cap_risk/latest.norm_risk_score-1)*100).toFixed(1)}%`:'—',
+                    note:'Change in the risk score from the CIF and the cap'},
                 ].map(s => (
                   <div key={s.label} style={{ padding:'14px', background:'var(--gray-50)',
                     borderRadius:'var(--radius)', border:'1px solid var(--gray-200)' }}>
@@ -1425,12 +1434,6 @@ export default function ACODeepDive({
                     <div style={{ fontSize:10, color:'var(--gray-400)', marginTop:6, lineHeight:1.4 }}>{s.note}</div>
                   </div>
                 ))}
-              </div>
-              <div style={{ marginTop:12, padding:'10px 14px', background:'var(--teal-light)',
-                borderRadius:'var(--radius)', fontSize:12, color:'var(--teal-dark)' }}>
-                <strong>LEAD context:</strong> Concurrent risk adjustment extends to ALL ACOs in LEAD —
-                not just those with high-risk populations. Organizations serving complex, high-need
-                patients will benefit most from this methodology change.
               </div>
             </div>
           )}
@@ -1449,8 +1452,8 @@ export default function ACODeepDive({
                   textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Age Distribution</div>
                 {[
                   {label:'Under 65',  key:'n_ben_age_0_64'},
-                  {label:'65–74',     key:'n_ben_age_65_74'},
-                  {label:'75–84',     key:'n_ben_age_75_84'},
+                  {label:'65 to 74',     key:'n_ben_age_65_74'},
+                  {label:'75 to 84',     key:'n_ben_age_75_84'},
                   {label:'85+',       key:'n_ben_age_85plus'},
                 ].map(row => {
                   const val = latest?.[row.key];
@@ -1579,7 +1582,7 @@ export default function ACODeepDive({
             <div className="chart-title">ACO Program Elections</div>
             <div className="chart-subtitle">
               Operational elections made by this ACO. Note: The REACH PUF does not report
-              voluntary vs. claims-based beneficiary alignment counts — that breakdown is not
+              voluntary vs. claims-based beneficiary alignment counts; that breakdown is not
               available at the ACO level in public data.
             </div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginTop:14}}>
@@ -1587,15 +1590,15 @@ export default function ACODeepDive({
                 {label:'Advanced Payment Option (APO)',
                  val:latest?.apo_election||'—',
                  active:latest?.apo_election==='Yes', color:COLORS.teal,
-                 note:'A capitation advance mechanism that modifies how non-PCP services by PCPs are paid. In PY2023, APO ACOs averaged 4.91% savings vs 4.42% non-APO.'},
+                 note:'Prospective monthly payments for non-primary-care services, in place of part of fee-for-service claims payments.'},
                 {label:'Alignment Plus',
                  val:latest?.alignment_plus||'—',
                  active:latest?.alignment_plus==='Yes', color:COLORS.green,
-                 note:'ACO election to participate in the Alignment Plus arrangement. 122 of 132 PY2023 ACOs (92%) elected this.'},
+                 note:'ACO election to participate in the Alignment Plus arrangement.'},
                 {label:'Enhanced PCC',
                  val:latest?.enhanced_pcc||'—',
                  active:latest?.enhanced_pcc==='Yes', color:COLORS.blue,
-                 note:'Enhanced Primary Care Capitation — a bonus payment encouraging greater PCP utilization, reflected in EPCC_PMT_AMT.'},
+                 note:'Primary care capitation at a higher percentage than Basic PCC, elected by the ACO. Paid amounts appear in the Capitation tab.'},
               ].map(item=>(
                 <div key={item.label} style={{padding:'14px',borderRadius:'var(--radius)',
                   border:`1.5px solid ${item.active?item.color+'44':'var(--gray-200)'}`,
@@ -1621,7 +1624,7 @@ export default function ACODeepDive({
           {/* HEBA context if available */}
           {latest?.heba_up_amt!=null && (
             <div className="chart-card" style={{ borderLeft:'4px solid var(--gold)' }}>
-              <div className="chart-title">HEBA (Health Equity Benchmark Adjustment) — PY2023</div>
+              <div className="chart-title">{latest.perf_year >= 2024 ? 'Population Adjustment (formerly HEBA)' : 'HEBA (Health Equity Benchmark Adjustment)'}: PY {latest.perf_year}</div>
               <div style={{ display:'flex', gap:14, marginTop:12, flexWrap:'wrap' }}>
                 {[
                   {label:'Upward Adj',   value:fmt.dollars(latest.heba_up_amt),  color:COLORS.green},

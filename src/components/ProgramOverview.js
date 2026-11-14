@@ -4,7 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, ReferenceLine, Cell,
 } from 'recharts';
-import { fmt, COLORS, CONFIG_COLORS, CONFIG_LABELS, PROGRAM_EVENTS, YEAR_NARRATIVES } from '../utils';
+import { fmt, COLORS, CONFIG_COLORS, CONFIG_LABELS, PROGRAM_EVENTS, YEAR_NARRATIVES, CAHPS_LABELS } from '../utils';
 import trendsData from '../data/reach_program_trends.json';
 import configMatrix from '../data/reach_config_matrix.json';
 
@@ -28,10 +28,10 @@ function ToggleGroup({ value, options, onChange }) {
   );
 }
 
-function YearFilter({ value, onChange }) {
+function YearFilter({ value, onChange, years }) {
   return (
     <div style={{ display:'flex', gap:6 }}>
-      {[2021,2022,2023].map(yr => (
+      {years.map(yr => (
         <button key={yr} onClick={() => onChange(yr)}
           style={{ padding:'4px 14px', borderRadius:20, fontSize:12, fontWeight:600, cursor:'pointer',
             border:`1.5px solid ${value===yr?'var(--teal)':'var(--gray-300)'}`,
@@ -80,22 +80,40 @@ const ECATS = [
 const ECOLS = [COLORS.blue,COLORS.navy,COLORS.teal,COLORS.amber,COLORS.green,COLORS.coral,COLORS.gray,COLORS.purple];
 
 const TREEMAP_COLORS = {
-  'Global|TCC':              '#1D6B3E',
-  'Global|PCC+ePCC+APO':     '#2e9478',
-  'Global|PCC+ePCC':         '#42BA97',
-  'Global|PCC':              '#8bd5c0',
-  'Professional|PCC+ePCC+APO':'#335B74',
-  'Professional|PCC+ePCC':   '#4a7a94',
-  'Professional|PCC':        '#7aaabe',
+  'Global|TCC':              '#0B1829',
+  'Global|PCC+ePCC+APO':     '#178a84',
+  'Global|PCC+ePCC':         '#20B2AA',
+  'Global|PCC':              '#9fd8d5',
+  'Professional|PCC+ePCC+APO':'#4a6fa5',
+  'Professional|PCC+ePCC':   '#6f8fbf',
+  'Professional|PCC':        '#a9bddb',
 };
 
 // ── Main component ────────────────────────────────────────────────────────────
 
+const CAHPS_SHORT = {
+  ssm_taci:'Timely Care & Information', ssm_com:'Provider Communication', ssm_cc:'Care Coordination',
+  ssm_sdm:'Shared Decision Making', ssm_pr:'Rating of Provider', ssm_chos:'Courteous Office Staff',
+  ssm_hpe:'Health Promotion', ssm_spr:'Stewardship of Resources',
+};
+// Program totals as published by CMS, in $ millions (see the reconciliation card for sources)
+const CMS_PUBLISHED = {
+  2021: { medicare: 70.4 },
+  2022: { medicare: 371.1, acos: 484.1 },
+  2023: { gross: 1643, medicare: 694.6, acos: 948.4 },
+  2024: { gross: 2511, medicare: 988.3, acos: 1522 },
+};
+const programName = yr => (yr <= 2022 ? 'GPDC' : 'ACO REACH');
+const signed = (v, d=1, unit='') => v == null || isNaN(v) ? '' : `${v > 0 ? '+' : v < 0 ? '-' : ''}${unit}${Math.abs(v).toFixed(d)}`;
+
 export default function ProgramOverview({ perfData, navigateToACO }) {
+  const YEARS  = perfData?.years?.length ? perfData.years : trendsData.map(t => t.year);
+  const LATEST = YEARS[YEARS.length - 1];
+  const yearSpan = `PY ${YEARS[0]} to ${LATEST}`;
   const [savMode,      setSavMode]      = useState('aggregate');
   const [expndMode,    setExpndMode]    = useState('aggregate');
-  const [selectedYear, setSelectedYear] = useState(2023);
-  const [configYear,   setConfigYear]   = useState(2023);
+  const [selectedYear, setSelectedYear] = useState(LATEST);
+  const [configYear,   setConfigYear]   = useState(LATEST);
   const [sortCol,      setSortCol]      = useState('avg_sav');
   const [sortDir,      setSortDir]      = useState('desc');
   const [qualView,     setQualView]     = useState('tqs');
@@ -106,7 +124,7 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
   // ── Chart data: true program-level savings rate ───────────────────────────
   const chartData = useMemo(() => trendsData.map(t => {
     const yr      = records.filter(r => r.perf_year === t.year);
-    const months  = t.year === 2021 ? 9 : 12;
+    const months  = t.months || 12;
     const totBnk  = yr.reduce((s,r) => s+(r.final_benchmark||0), 0);
     const totCst  = yr.reduce((s,r) => s+(r.tot_cost_care||0), 0);
     const totBen  = yr.reduce((s,r) => s+(r.bene_cnt||0), 0);
@@ -122,7 +140,9 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
       n_savers:       t.n_savers,
       pct_savers:     t.pct_savers,
       avg_sav_rate:   t.avg_sav_rate,
-      prog_sav_rate:  totBnk > 0 ? +((totBnk-totCst)/totBnk*100).toFixed(3) : null,
+      prog_sav_rate:  t.cms_basis_gross_rate ?? (totBnk > 0 ? +((totBnk-totCst)/totBnk*100).toFixed(3) : null),
+      gross_M:        t.cms_basis_gross_M,
+      medicare_M:     t.cms_basis_medicare_M,
       total_shared_M: t.total_shared_savings,
       shared_perbene: totBen > 0 ? +(totSav/totBen).toFixed(2) : null,
       shared_pbpm:    benMon > 0 ? +(totSav/benMon).toFixed(2) : null,
@@ -144,18 +164,18 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
   // ── Selected year ─────────────────────────────────────────────────────────
   const selRecs   = useMemo(() => records.filter(r => r.perf_year === selectedYear), [records, selectedYear]);
   const selTrend  = chartData.find(d => d.year === selectedYear);
-  const selMonths = selectedYear === 2021 ? 9 : 12;
+  const selMonths = trendsData.find(t => t.year === selectedYear)?.months || 12;
   const selBenes  = selRecs.reduce((s,r) => s+(r.bene_cnt||0), 0);
   const selSavings= selRecs.reduce((s,r) => s+(r.shared_savings||0), 0);
 
   // Savings distribution buckets
   const savBuckets = useMemo(() => [
     {label:'< -10%', min:-Infinity, max:-10, pos:false},
-    {label:'-10–-5%',min:-10,       max:-5,  pos:false},
-    {label:'-5–0%',  min:-5,        max:0,   pos:false},
-    {label:'0–5%',   min:0,         max:5,   pos:true},
-    {label:'5–10%',  min:5,         max:10,  pos:true},
-    {label:'10–15%', min:10,        max:15,  pos:true},
+    {label:'-10 to -5%',min:-10,       max:-5,  pos:false},
+    {label:'-5 to 0%',  min:-5,        max:0,   pos:false},
+    {label:'0 to 5%',   min:0,         max:5,   pos:true},
+    {label:'5 to 10%',  min:5,         max:10,  pos:true},
+    {label:'10 to 15%', min:10,        max:15,  pos:true},
     {label:'>15%',   min:15,        max:Infinity, pos:true},
   ].map(b => ({
     label: b.label, pos: b.pos,
@@ -217,7 +237,7 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
   // Utilization
   const utilData = useMemo(() => chartData.map(t => {
     const yr  = records.filter(r => r.perf_year === t.year);
-    const avg = key => yr.length ? yr.reduce((s,r) => s+(r[key]||0), 0)/yr.length : null;
+    const avg = key => { const v = yr.filter(r => r[key] != null); return v.length ? v.reduce((s,r) => s+r[key], 0)/v.length : null; };
     return {
       year: t.year,
       'ED Visits/1K':  avg('p_edv_vis')  != null ? +avg('p_edv_vis').toFixed(1)  : null,
@@ -229,48 +249,50 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
 
   // Longitudinal cohort
   const longData = useMemo(() => {
-    const ids21 = new Set(records.filter(r => r.perf_year===2021).map(r => r.aco_id));
-    const ids22 = new Set(records.filter(r => r.perf_year===2022).map(r => r.aco_id));
-    const ids23 = new Set(records.filter(r => r.perf_year===2023).map(r => r.aco_id));
-    const all3  = [...ids21].filter(id => ids22.has(id) && ids23.has(id));
+    const idSets = YEARS.map(y => new Set(records.filter(r => r.perf_year===y).map(r => r.aco_id)));
+    const all3  = [...idSets[0]].filter(id => idSets.every(s => s.has(id)));
     const avgSav = (ids, yr) => {
       const recs = records.filter(r => ids.includes(r.aco_id) && r.perf_year===yr && r.sav_rate!=null);
       return recs.length ? +(recs.reduce((s,r) => s+r.sav_rate, 0)/recs.length).toFixed(2) : null;
     };
     const pAvg = {};
     trendsData.forEach(t => { pAvg[String(t.year)] = t.avg_sav_rate; });
-    return [
-      { cohort:'All-3-Year (n=44)', py2021:avgSav(all3,2021), py2022:avgSav(all3,2022), py2023:avgSav(all3,2023) },
-      { cohort:'Program Avg',       py2021:pAvg['2021']??null, py2022:pAvg['2022']??null, py2023:pAvg['2023']??null },
-    ];
-  }, [records]);
+    const cohortRow = { cohort:`In all ${YEARS.length} years (n=${all3.length})`, n:all3.length };
+    const progRow   = { cohort:'All ACOs (simple average)' };
+    YEARS.forEach(y => { cohortRow[`py${y}`] = avgSav(all3, y); progRow[`py${y}`] = pAvg[String(y)] ?? null; });
+    const first = YEARS[0], last = LATEST;
+    const improved = all3.filter(id => {
+      const a = records.find(r => r.aco_id===id && r.perf_year===first)?.sav_rate;
+      const b = records.find(r => r.aco_id===id && r.perf_year===last)?.sav_rate;
+      return a!=null && b!=null && b > a;
+    }).length;
+    cohortRow.pctImproved = all3.length ? Math.round(improved/all3.length*100) : null;
+    return [cohortRow, progRow];
+  }, [records]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // HEBA summary
+  const hebaYear = [...YEARS].reverse().find(y => records.some(r => r.perf_year===y && r.heba_up_amt!=null));
   const hebaSummary = useMemo(() => {
-    const py23    = records.filter(r => r.perf_year===2023);
-    const upTotal = py23.reduce((s,r) => s+(r.heba_up_amt||0), 0);
-    const dnTotal = py23.reduce((s,r) => s+(r.heba_down_amt||0), 0);
-    const upCount = py23.filter(r => (r.heba_up_amt||0)>0).length;
-    return { upTotal, dnTotal, upCount, net:upTotal+dnTotal, n:py23.length };
-  }, [records]);
+    const yr      = records.filter(r => r.perf_year===hebaYear && r.heba_up_amt!=null);
+    const upTotal = yr.reduce((s,r) => s+(r.heba_up_amt||0), 0);
+    const dnTotal = yr.reduce((s,r) => s+(r.heba_down_amt||0), 0);
+    const netPos  = yr.filter(r => (r.heba_up_amt||0)+(r.heba_down_amt||0) > 0).length;
+    const netNeg  = yr.filter(r => (r.heba_up_amt||0)+(r.heba_down_amt||0) < 0).length;
+    return { upTotal, dnTotal, netPos, netNeg, net:upTotal+dnTotal, n:yr.length };
+  }, [records, hebaYear]);
 
   // CAHPS comparison
-  const cahpsCompData = useMemo(() => {
-    const labels = {
-      ssm_taci:'Timely Access', ssm_com:'Communication', ssm_cc:'Care Coordination',
-      ssm_sdm:'Shared Decision', ssm_pr:'Provider Rating', ssm_chos:'Choice/Provider',
-      ssm_hpe:'Health Promotion', ssm_spr:'Specialist Rating',
-    };
-    return Object.entries(labels).map(([key, measure]) => {
-      const py22 = records.filter(r => r.perf_year===2022 && r[key]!=null);
-      const py23 = records.filter(r => r.perf_year===2023 && r[key]!=null);
-      return {
-        measure,
-        PY2022: py22.length ? +(py22.reduce((s,r) => s+r[key], 0)/py22.length).toFixed(1) : null,
-        PY2023: py23.length ? +(py23.reduce((s,r) => s+r[key], 0)/py23.length).toFixed(1) : null,
-      };
-    }).filter(d => d.PY2022!=null || d.PY2023!=null);
-  }, [records]);
+  const cahpsYears = YEARS.filter(y => records.some(r => r.perf_year===y && r.ssm_com!=null));
+  const cahpsCompData = useMemo(() => Object.entries(CAHPS_SHORT).map(([key, measure]) => {
+    const row = { measure, key, full: CAHPS_LABELS[key] };
+    cahpsYears.forEach(y => {
+      const v = records.filter(r => r.perf_year===y && r[key]!=null);
+      row[`PY${y}`] = v.length ? +(v.reduce((s,r) => s+r[key], 0)/v.length).toFixed(1) : null;
+    });
+    return row;
+  }), [records]); // eslint-disable-line react-hooks/exhaustive-deps
+  const cahpsLatestKey = `PY${cahpsYears[cahpsYears.length-1]}`;
+  const cahpsRanked = [...cahpsCompData].filter(d => d[cahpsLatestKey]!=null).sort((a,b) => b[cahpsLatestKey]-a[cahpsLatestKey]);
 
   // All-time rollup
   const allSavings = records.reduce((s,r) => s+(r.shared_savings||0), 0);
@@ -288,28 +310,27 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
     <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
 
       {/* Context banner */}
-      <div className="lead-banner">
-        <h2>ACO REACH Model — PY 2021–2023</h2>
+      <div className="hero-banner">
+        <h2>ACO REACH Model: {yearSpan}</h2>
         <p>
-          The ACO REACH Model (formerly GPDC) introduced prospective capitated payments,
-          concurrent risk adjustment, and health equity provisions — all of which carry forward
-          into the <a href="https://trynytyhealth.com/post-lead-model" target="_blank" rel="noreferrer">LEAD Model</a>{' '}
-          launching January 1, 2027.{' '}
-          <strong style={{color:'var(--gold)'}}>LEAD applications close May 17, 2026.</strong>
+          The ACO REACH Model (Global and Professional Direct Contracting through PY 2022) pays participating
+          ACOs through prospective capitation, uses concurrent risk adjustment for High Needs ACOs, and adjusts
+          benchmarks for health equity. The model runs through December 31, 2026. All figures below come from
+          the CMS ACO REACH Financial and Quality Results public use files.
         </p>
       </div>
 
       {/* All-time bar */}
       <div style={{background:'var(--navy)',borderRadius:'var(--radius-lg)',padding:'20px 24px'}}>
         <div style={{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.5)',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:14}}>
-          All-Time Program Summary · PY 2021–2023
+          All-Time Program Summary · {yearSpan}
         </div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:20}}>
           {[
             {label:'Unique ACOs',          value: fmt.num(new Set(records.map(r=>r.aco_id)).size)},
-            {label:'Total Earned Savings',  value: fmt.dollars(allSavings)},
-            {label:'PY 2023 Beneficiaries', value: fmt.shortNum(records.filter(r=>r.perf_year===2023).reduce((s,r)=>s+(r.bene_cnt||0),0))},
-            {label:'PY 2023 High Performers',value:`${records.filter(r=>r.perf_year===2023&&r.hpp_flag==='Yes').length} of 132 ACOs`},
+            {label:'Net Savings to ACOs, All Years',  value: fmt.dollars(allSavings)},
+            {label:`PY ${LATEST} Beneficiaries`, value: fmt.shortNum(records.filter(r=>r.perf_year===LATEST).reduce((s,r)=>s+(r.bene_cnt||0),0))},
+            {label:`PY ${LATEST} High Performers`,value:`${records.filter(r=>r.perf_year===LATEST&&r.hpp_flag==='Yes').length} of ${records.filter(r=>r.perf_year===LATEST).length} ACOs`},
           ].map(s => (
             <div key={s.label}>
               <div style={{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.5)',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:4}}>{s.label}</div>
@@ -328,17 +349,17 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
           {[
             { title:'ACOs Participating',   value:fmt.num(latest?.n_acos),
               delta:`${(latest?.n_acos-prior?.n_acos)>0?'+':''}${latest?.n_acos-prior?.n_acos} vs PY ${prior?.year}` },
-            { title:'Earned Savings',       value:fmt.dollars(records.filter(r=>r.perf_year===latest?.year).reduce((s,r)=>s+(r.shared_savings||0),0)),
+            { title:'Net Savings to ACOs',  value:fmt.dollars(records.filter(r=>r.perf_year===latest?.year).reduce((s,r)=>s+(r.shared_savings||0),0)),
               delta:`vs ${fmt.dollars(records.filter(r=>r.perf_year===prior?.year).reduce((s,r)=>s+(r.shared_savings||0),0))} in PY ${prior?.year}` },
             { title:'% Earning Savings',    value:`${latest?.pct_savers}%`,
-              delta:`${(latest?.pct_savers-prior?.pct_savers)>0?'+':''}${(latest?.pct_savers-prior?.pct_savers).toFixed(1)}pp vs PY ${prior?.year}` },
-            { title:'Program Savings Rate', value:latest?.prog_sav_rate!=null?`${latest.prog_sav_rate.toFixed(2)}%`:'—',
-              note:'(Σ Benchmark − Σ Expense) ÷ Σ Benchmark',
-              delta:prior?.prog_sav_rate!=null?`${(latest?.prog_sav_rate-prior?.prog_sav_rate)>0?'+':''}${(latest?.prog_sav_rate-prior?.prog_sav_rate).toFixed(2)}pp vs PY ${prior?.year}`:''},
+              delta:`${signed(latest?.pct_savers-prior?.pct_savers)} pts vs PY ${prior?.year}` },
+            { title:'Gross Savings Rate', value:latest?.prog_sav_rate!=null?`${latest.prog_sav_rate.toFixed(2)}%`:'—',
+              note:'CMS basis',
+              delta:prior?.prog_sav_rate!=null?`${signed(latest?.prog_sav_rate-prior?.prog_sav_rate, 2)} pts vs PY ${prior?.year}`:''},
             { title:'Assigned Beneficiaries', value:fmt.shortNum(latest?.total_benes),
-              delta:`+${fmt.shortNum(latest?.total_benes-prior?.total_benes)} vs PY ${prior?.year}` },
-            { title:'Avg Expense PBPM',     value:latest?.avg_exp_pbpm!=null?`$${Number(latest.avg_exp_pbpm).toFixed(2)}`:'—',
-              delta:prior?.avg_exp_pbpm!=null?`${(latest?.avg_exp_pbpm-prior?.avg_exp_pbpm)>0?'+':''}$${(latest?.avg_exp_pbpm-prior?.avg_exp_pbpm).toFixed(2)} vs PY ${prior?.year}`:''},
+              delta:`${latest?.total_benes>=prior?.total_benes?'+':'-'}${fmt.shortNum(Math.abs(latest?.total_benes-prior?.total_benes))} vs PY ${prior?.year}` },
+            { title:'Avg Expense PBPM',     value:latest?.avg_exp_pbpm!=null?`$${Number(latest.avg_exp_pbpm).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`:'—',
+              delta:prior?.avg_exp_pbpm!=null?`${signed(latest?.avg_exp_pbpm-prior?.avg_exp_pbpm, 2, '$')} vs PY ${prior?.year}`:''},
           ].map((k,ki) => (
             <div className="chart-card" key={ki} style={{padding:'14px 18px'}}>
               <div style={{fontSize:11,fontWeight:600,color:'var(--gray-500)',textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:6}}>
@@ -351,6 +372,55 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
         </div>
       </div>
 
+      {/* Reconciliation with CMS published totals */}
+      <div className="chart-card">
+        <div className="chart-title">How These Totals Compare With CMS's Published Results</div>
+        <div className="chart-subtitle">
+          CMS reports gross savings against the benchmark before the Global discount and splits it into net savings
+          to Medicare and net savings to ACOs. This explorer rebuilds the same split from the ACO-level public use
+          file. CMS describes that file as results prior to final settlement, so small differences remain.
+        </div>
+        <div className="table-scroll" style={{marginTop:12}}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Year</th>
+                <th style={{textAlign:'right'}}>Gross savings: CMS</th>
+                <th style={{textAlign:'right'}}>Gross savings: this tool</th>
+                <th style={{textAlign:'right'}}>Net to Medicare: CMS</th>
+                <th style={{textAlign:'right'}}>Net to Medicare: this tool</th>
+                <th style={{textAlign:'right'}}>Net to ACOs: CMS</th>
+                <th style={{textAlign:'right'}}>Net to ACOs: this tool</th>
+              </tr>
+            </thead>
+            <tbody>
+              {chartData.map(t => {
+                const pub = CMS_PUBLISHED[t.year] || {};
+                const m = v => v == null ? '—' : fmt.dollars(v * 1e6);
+                return (
+                  <tr key={t.year}>
+                    <td><strong>PY {t.year}</strong></td>
+                    <td style={{textAlign:'right'}}>{m(pub.gross)}</td>
+                    <td style={{textAlign:'right'}}>{m(t.gross_M)}</td>
+                    <td style={{textAlign:'right'}}>{m(pub.medicare)}</td>
+                    <td style={{textAlign:'right'}}>{m(t.medicare_M)}</td>
+                    <td style={{textAlign:'right'}}>{m(pub.acos)}</td>
+                    <td style={{textAlign:'right'}}>{m(t.total_shared_M)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div style={{marginTop:8,fontSize:11,color:'var(--gray-500)',lineHeight:1.6}}>
+          This tool: gross savings = Σ (final benchmark ÷ (1 − discount) + equity adjustment) − Σ total cost of care;
+          net to ACOs = Σ shared savings; net to Medicare = the difference. CMS figures: ACO REACH PY 2023 and PY 2024
+          Financial and Quality Results fact sheets; PY 2021 and PY 2022 Medicare savings as reported in the PY 2024 results summary.
+          The ACO-level savings rates elsewhere in this tool are CMS's published SAV_RATE field, measured against the final
+          benchmark after the discount.
+        </div>
+      </div>
+
       {/* Configuration Performance Matrix */}
       <div className="chart-card">
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:12}}>
@@ -358,10 +428,10 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
             <div className="chart-title">Configuration Performance Matrix</div>
             <div className="chart-subtitle">
               How ACO performance varies by Risk × Capitation × Enhanced PCC × Stop Loss.
-              This analysis is not published by CMS — derived from the participant-level PUF.
+              CMS does not publish this view; it is derived from the ACO-level public use file.
             </div>
           </div>
-          <YearFilter value={configYear} onChange={setConfigYear} />
+          <YearFilter value={configYear} onChange={setConfigYear} years={YEARS} />
         </div>
 
         {/* Summary cards for 3 main configs */}
@@ -457,7 +527,7 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
                     </div>
                   </td>
                   <td style={{textAlign:'right',color:'var(--gray-700)'}}>
-                    {row.shared_M!=null?`$${row.shared_M}M`:'—'}
+                    {row.shared_M!=null?fmt.dollarsM(row.shared_M):'—'}
                   </td>
                 </tr>
               ))}
@@ -466,10 +536,14 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
         </div>
         <div style={{marginTop:10,fontSize:11,color:'var(--gray-600)',padding:'8px 12px',
           background:'var(--gray-50)',borderRadius:'var(--radius)'}}>
-          <strong>Key finding PY {configYear}:</strong> Global/TCC without stop loss averaged{' '}
-          {configData.find(d=>d.config_key==='Global/TCC'&&d.stop_loss==='No')?.avg_sav?.toFixed(1)}% savings
-          with {configData.find(d=>d.config_key==='Global/TCC'&&d.stop_loss==='No')?.pct_sav}% savers
-          — the highest-performing configuration. This maps to the Global track in LEAD.
+          {(() => {
+            const best = [...configData].filter(d => d.count >= 5).sort((a,b) => (b.avg_sav||0)-(a.avg_sav||0))[0];
+            if (!best) return null;
+            return (<><strong>PY {configYear}:</strong> among configurations with at least five ACOs,{' '}
+              {CONFIG_LABELS[best.config_key]||best.config_key} with Enhanced PCC {best.enhanced_pcc==='Yes'?'elected':'not elected'} and
+              stop loss {best.stop_loss==='Yes'?'elected':'not elected'} had the highest average savings rate
+              ({best.avg_sav?.toFixed(1)}%, {best.pct_sav}% of {best.count} ACOs earning savings).</>);
+          })()}
         </div>
       </div>
 
@@ -481,7 +555,7 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
           <ComposedChart data={chartData} margin={{top:8,right:56,left:0,bottom:0}}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)"/>
             <XAxis dataKey="year" tick={{fontSize:11}}/>
-            <YAxis yAxisId="left" tick={{fontSize:11}} width={40} domain={[0,160]}/>
+            <YAxis yAxisId="left" tick={{fontSize:11}} width={40} domain={[0,'auto']}/>
             <YAxis yAxisId="right" orientation="right" tick={{fontSize:11}} width={60} tickFormatter={v=>fmt.shortNum(v)}/>
             <Tooltip content={({active,payload,label})=>{
               if(!active||!payload?.length) return null;
@@ -508,16 +582,16 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
 
       {/* Program Savings Rate — dual axis */}
       <div className="chart-card">
-        <div className="chart-title">Program Savings Rate</div>
+        <div className="chart-title">Program Gross Savings Rate</div>
         <div className="chart-subtitle">
-          (Σ Benchmark − Σ Total Cost) ÷ Σ Benchmark — true program-level rate weighted by ACO size (left axis).
-          % ACOs generating savings on right axis.
+          Gross savings as a share of the benchmark before the Global discount, the basis CMS uses for its
+          published results (left axis). Share of ACOs earning savings on the right axis.
         </div>
         <ResponsiveContainer width="100%" height={230}>
           <ComposedChart data={chartData} margin={{top:8,right:56,left:0,bottom:0}}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)"/>
             <XAxis dataKey="year" tick={{fontSize:11}}/>
-            <YAxis yAxisId="left" tickFormatter={v=>`${v}%`} tick={{fontSize:11}} width={44} domain={[0,8]}/>
+            <YAxis yAxisId="left" tickFormatter={v=>`${v}%`} tick={{fontSize:11}} width={44} domain={[0,'auto']}/>
             <YAxis yAxisId="right" orientation="right" tickFormatter={v=>`${v}%`} tick={{fontSize:11}} width={44} domain={[0,100]}/>
             <ReferenceLine yAxisId="left" y={0} stroke="var(--gray-400)" strokeDasharray="4 4"/>
             <Tooltip content={({active,payload,label})=>{
@@ -535,7 +609,7 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
               );
             }}/>
             <Legend wrapperStyle={{fontSize:11}}/>
-            <Bar yAxisId="left" dataKey="prog_sav_rate" name="Program Savings Rate" radius={[3,3,0,0]}>
+            <Bar yAxisId="left" dataKey="prog_sav_rate" name="Gross Savings Rate" radius={[3,3,0,0]}>
               {chartData.map((d,i)=><Cell key={i} fill={d.prog_sav_rate>=0?COLORS.teal:COLORS.red}/>)}
             </Bar>
             <Line yAxisId="right" type="monotone" dataKey="pct_savers" name="% ACOs Saving"
@@ -574,7 +648,7 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
           <div>
             <div className="chart-title">Quality Measure Trends</div>
             <div className="chart-subtitle">
-              PY 2021: 100% under pay-for-reporting. PY 2023: shift to pay-for-performance — scores reflect actual performance.
+              PY 2021 and PY 2022 were largely pay-for-reporting. Quality became pay-for-performance in PY 2023.
             </div>
           </div>
           <ToggleGroup value={qualView} onChange={setQualView} options={[
@@ -590,24 +664,28 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
               <LineChart data={chartData} margin={{top:4,right:12,left:0,bottom:0}}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)"/>
                 <XAxis dataKey="year" tick={{fontSize:11}}/>
-                <YAxis domain={[0,105]} tickFormatter={v=>`${v}%`} tick={{fontSize:11}}/>
+                <YAxis domain={[0,100]} tickFormatter={v=>`${v}%`} tick={{fontSize:11}}/>
                 <Tooltip formatter={v=>[`${Number(v).toFixed(1)}%`,'Avg Quality Score']}/>
                 <Line type="monotone" dataKey="avg_qual" name="Avg Quality Score"
                   stroke={COLORS.green} strokeWidth={2.5} dot={{r:5}}/>
               </LineChart>
             </ResponsiveContainer>
             <div style={{padding:'4px 0'}}>
-              {[
-                {yr:2021, val:100,  note:'Pay-for-reporting — all ACOs received 100%'},
-                {yr:2022, val:99.4, note:'Still largely P4R — only 11 ACOs below 100%'},
-                {yr:2023, val:79.4, note:'First P4P year — scores reflect actual performance'},
-              ].map(row => (
+              {chartData.map(t => {
+                const yr = records.filter(r => r.perf_year===t.year && r.qual_scr!=null);
+                const below = yr.filter(r => r.qual_scr < 100).length;
+                const note = t.year <= 2021 ? 'Pay-for-reporting: every ACO received 100%'
+                  : t.year === 2022 ? `Mostly pay-for-reporting: ${below} of ${yr.length} ACOs below 100%`
+                  : t.year === 2023 ? 'First pay-for-performance year'
+                  : `Pay-for-performance: ${below} of ${yr.length} ACOs below 100%`;
+                return { yr:t.year, val:t.avg_qual!=null?+Number(t.avg_qual).toFixed(1):null, note };
+              }).map(row => (
                 <div key={row.yr} style={{display:'flex',gap:12,alignItems:'flex-start',
                   padding:'10px 14px',marginBottom:6,borderRadius:'var(--radius)',
-                  background:row.yr===2023?'var(--amber-light)':'var(--gray-50)',
-                  border:`1px solid ${row.yr===2023?'rgba(212,134,10,0.2)':'var(--gray-200)'}`}}>
+                  background:row.yr>=2023?'var(--amber-light)':'var(--gray-50)',
+                  border:`1px solid ${row.yr>=2023?'rgba(212,134,10,0.2)':'var(--gray-200)'}`}}>
                   <div style={{fontWeight:700,color:'var(--navy)',minWidth:40}}>PY{row.yr}</div>
-                  <div style={{fontSize:22,fontWeight:800,color:row.yr===2023?COLORS.amber:COLORS.green,minWidth:56}}>{row.val}%</div>
+                  <div style={{fontSize:22,fontWeight:800,color:row.yr>=2023?COLORS.amber:COLORS.green,minWidth:56}}>{row.val}%</div>
                   <div style={{fontSize:11,color:'var(--gray-600)',lineHeight:1.5,paddingTop:4}}>{row.note}</div>
                 </div>
               ))}
@@ -618,7 +696,7 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
         {qualView==='claims' && (
           <div>
             <div style={{marginBottom:10,fontSize:12,color:'var(--gray-500)'}}>
-              ACR = All-Condition Readmissions (lower = better) · UAMCC = Unplanned Admissions for Multiple Chronic Conditions (lower = better) · TFU = Timely Follow-Up (higher = better, PY2022+ only)
+              ACR = risk-standardized all-condition readmission rate (lower is better) · UAMCC = unplanned admissions per 100 person-years for patients with multiple chronic conditions (lower is better) · TFU = timely follow-up after acute exacerbations of chronic conditions (higher is better, PY 2022 onward). Simple averages across ACOs.
             </div>
             <div className="grid-2">
               <ResponsiveContainer width="100%" height={200}>
@@ -633,10 +711,11 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
                 </LineChart>
               </ResponsiveContainer>
               <div>
-                {[
-                  {yr:2022, acr:15.64, uamcc:34.30, tfu:68.31},
-                  {yr:2023, acr:15.77, uamcc:35.37, tfu:71.80},
-                ].map(row => (
+                {chartData.filter(t => t.year >= 2022).map(t => {
+                  const yr = records.filter(r => r.perf_year===t.year && r.tfu_scr!=null);
+                  return { yr:t.year, acr:t.avg_acr!=null?Number(t.avg_acr).toFixed(2):'—', uamcc:t.avg_uamcc!=null?Number(t.avg_uamcc).toFixed(2):'—',
+                    tfu: yr.length ? (yr.reduce((s,r)=>s+r.tfu_scr,0)/yr.length).toFixed(2) : '—' };
+                }).map(row => (
                   <div key={row.yr} style={{display:'flex',gap:10,padding:'10px 14px',marginBottom:6,
                     borderRadius:'var(--radius)',background:'var(--gray-50)',border:'1px solid var(--gray-200)'}}>
                     <div style={{fontWeight:700,color:'var(--navy)',minWidth:42}}>PY{row.yr}</div>
@@ -649,8 +728,8 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
                 ))}
                 <div style={{marginTop:8,fontSize:11,color:'var(--gray-600)',padding:'8px 12px',
                   background:'var(--blue-light)',borderRadius:'var(--radius)'}}>
-                  TFU not available PY2021. ACR and UAMCC slightly worsened PY22→23, consistent with
-                  expanded high-needs participation in PY2023.
+                  TFU was not reported for PY 2021. Averages shift with the mix of ACOs each year,
+                  including the number of High Needs ACOs, so compare individual ACOs over time in the Deep Dive.
                 </div>
               </div>
             </div>
@@ -660,7 +739,7 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
         {qualView==='cahps' && (
           <div>
             <div style={{marginBottom:10,fontSize:12,color:'var(--gray-500)'}}>
-              CAHPS SSM measures — available PY2022 and PY2023 only. Higher = better. All scores on 0–100 scale.
+              CAHPS summary survey measures, PY {cahpsYears[0]} onward (not reported for PY 2021). Higher is better; 0 to 100 scale. Simple averages across ACOs.
             </div>
             {cahpsCompData.length > 0 && (
               <ResponsiveContainer width="100%" height={280}>
@@ -671,15 +750,16 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
                   <YAxis type="category" dataKey="measure" tick={{fontSize:10}} width={130} interval={0}/>
                   <Tooltip formatter={v=>[`${Number(v).toFixed(1)}%`,'']}/>
                   <Legend wrapperStyle={{fontSize:11}}/>
-                  <Bar dataKey="PY2022" fill={COLORS.blue} radius={[0,2,2,0]}/>
-                  <Bar dataKey="PY2023" fill={COLORS.teal} radius={[0,2,2,0]}/>
+                  {cahpsYears.map((y,i) => (
+                    <Bar key={y} dataKey={`PY${y}`} fill={[COLORS.gray, COLORS.blue, COLORS.teal, COLORS.navy][Math.max(0, 4 - cahpsYears.length + i)]} radius={[0,2,2,0]}/>
+                  ))}
                 </BarChart>
               </ResponsiveContainer>
             )}
             <div style={{marginTop:10,fontSize:11,color:'var(--gray-500)',padding:'8px 12px',
               background:'var(--gray-50)',borderRadius:'var(--radius)'}}>
-              Communication and Choice of Provider score highest (90%+). Shared Decision Making and
-              Specialist Provider Rating are lowest — consistent with national primary care patterns. PY2021 not available.
+              {cahpsRanked.length >= 4 && <>In {cahpsLatestKey.replace('PY','PY ')}, {cahpsRanked[0].full} and {cahpsRanked[1].full} scored
+              highest; {cahpsRanked[cahpsRanked.length-2].full} and {cahpsRanked[cahpsRanked.length-1].full} scored lowest.</>}
             </div>
           </div>
         )}
@@ -689,7 +769,7 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
       <div className="chart-card">
         <div className="chart-title">Utilization Trends</div>
         <div className="chart-subtitle">
-          Average per 1,000 beneficiaries. Note: PY2021 is 9 months — not directly comparable on annualized basis.
+          Average per 1,000 beneficiaries across ACOs reporting each measure. PY 2021 covers 9 months, so compare it with care.
         </div>
         <ResponsiveContainer width="100%" height={240}>
           <LineChart data={utilData} margin={{top:8,right:16,left:0,bottom:0}}>
@@ -710,8 +790,9 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
       <div className="chart-card">
         <div className="chart-title">Longitudinal ACO Performance</div>
         <div className="chart-subtitle">
-          44 ACOs participated all 3 years. Their trajectory (3.95% → 6.95% → 7.41%) demonstrates
-          compounding experience — the core argument for LEAD's 10-year term. 70% improved over the period.
+          Average savings rate for the {longData[0].n} ACOs that participated in every performance year, compared
+          with the simple average across all ACOs each year. {longData[0].pctImproved}% of the continuous ACOs had a
+          higher savings rate in PY {LATEST} than in PY {YEARS[0]}.
         </div>
         <div style={{display:'flex',gap:16,marginTop:16,flexWrap:'wrap'}}>
           {longData.map((row,ri) => {
@@ -720,11 +801,11 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
               <div key={row.cohort} style={{flex:1,minWidth:200}}>
                 <div style={{fontSize:11,fontWeight:700,color,marginBottom:8}}>{row.cohort}</div>
                 <div style={{display:'flex',gap:8}}>
-                  {[2021,2022,2023].map((yr,i) => {
+                  {YEARS.map((yr,i) => {
                     const val = row[`py${yr}`];
                     return (
                       <div key={yr} style={{flex:1,textAlign:'center',padding:'10px 6px',
-                        background:i===2?`${color}18`:'var(--gray-50)',
+                        background:i===YEARS.length-1?`${color}18`:'var(--gray-50)',
                         borderRadius:'var(--radius)',border:`1px solid ${color}22`}}>
                         <div style={{fontSize:10,color:'var(--gray-500)',marginBottom:4}}>PY{yr}</div>
                         <div style={{fontSize:18,fontWeight:700,color}}>
@@ -738,25 +819,21 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
             );
           })}
         </div>
-        <div style={{marginTop:12,padding:'10px 14px',background:'var(--teal-light)',
-          borderRadius:'var(--radius)',fontSize:12,color:'var(--teal-dark)',fontWeight:500}}>
-          → LEAD's 10-year no-rebase structure is designed for organizations with this trajectory.
-          The longer you perform, the more the stable benchmark compounds in your favor.
-        </div>
       </div>
 
       {/* HEBA */}
       <div className="chart-card" style={{borderLeft:'4px solid var(--gold)'}}>
-        <div className="chart-title">Health Equity Benchmark Adjustment (HEBA) — PY 2023</div>
+        <div className="chart-title">{hebaYear >= 2024 ? 'Population Adjustment (formerly HEBA)' : 'Health Equity Benchmark Adjustment (HEBA)'}: PY {hebaYear}</div>
         <div className="chart-subtitle">
-          Unique to ACO REACH and LEAD — no equivalent in MSSP. HEBA adjusts each ACO's benchmark
-          to account for historically suppressed spending in underserved communities.
+          This adjustment raises the benchmark for aligned beneficiaries from the most underserved communities and
+          lowers it for those from the least underserved. CMS published it as HEBA in PY 2023 and as the Population
+          Adjustment in PY 2024. Most ACOs receive both, so the cards show each ACO's net adjustment.
         </div>
         <div style={{display:'flex',gap:16,marginTop:14,flexWrap:'wrap'}}>
           {[
-            {label:'ACOs Receiving Upward Adj', value:fmt.num(hebaSummary.upCount), sub:`Total: ${fmt.dollars(hebaSummary.upTotal)}`, color:COLORS.green},
-            {label:'ACOs Receiving Downward Adj',value:fmt.num(hebaSummary.n),       sub:`Total: ${fmt.dollars(hebaSummary.dnTotal)}`, color:COLORS.red},
-            {label:'Net Program Impact',         value:fmt.dollars(hebaSummary.net),  sub:'Near-neutral by design',                   color:COLORS.teal},
+            {label:'ACOs With a Net Increase', value:fmt.num(hebaSummary.netPos), sub:`All upward adjustments: ${fmt.dollars(hebaSummary.upTotal)}`, color:COLORS.green},
+            {label:'ACOs With a Net Decrease', value:fmt.num(hebaSummary.netNeg), sub:`All downward adjustments: ${fmt.dollars(hebaSummary.dnTotal)}`, color:COLORS.red},
+            {label:'Net Program Impact',         value:fmt.dollars(hebaSummary.net),  sub:`Across ${hebaSummary.n} ACOs`,                   color:COLORS.teal},
           ].map(s => (
             <div key={s.label} style={{flex:1,minWidth:160,padding:'16px',
               borderRadius:'var(--radius)',border:`1px solid ${s.color}22`,background:`${s.color}06`}}>
@@ -766,34 +843,28 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
             </div>
           ))}
         </div>
-        <div style={{marginTop:12,padding:'10px 14px',background:'var(--gold-light)',
-          borderRadius:'var(--radius)',fontSize:12,color:'var(--amber)'}}>
-          <strong>LEAD context:</strong> HEBA carries forward into LEAD with expanded application.
-          ACOs serving dually eligible and underserved populations will benefit from more accurate
-          benchmark-setting — directly addressing the historical disincentive to care for complex populations.
-        </div>
       </div>
 
       {/* Year filter */}
       <div style={{display:'flex',alignItems:'center',gap:12}}>
         <div style={{fontSize:12,fontWeight:700,color:'var(--gray-600)',textTransform:'uppercase',letterSpacing:'0.06em'}}>Year Detail:</div>
-        <YearFilter value={selectedYear} onChange={setSelectedYear}/>
+        <YearFilter value={selectedYear} onChange={setSelectedYear} years={YEARS}/>
       </div>
 
       {/* Year narrative */}
       <div style={{background:'var(--navy)',borderRadius:'var(--radius-lg)',padding:'16px 20px',borderLeft:'4px solid var(--teal)'}}>
         <div style={{fontSize:11,fontWeight:700,color:'var(--teal)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:6}}>
-          PY {selectedYear} — Program Context
+          PY {selectedYear}: Program Context
         </div>
         <div style={{fontSize:13,color:'rgba(255,255,255,0.75)',lineHeight:1.7}}>
-          {YEAR_NARRATIVES[selectedYear]}
+          {YEAR_NARRATIVES[selectedYear] || `${selTrend?.n_acos} ACOs participated in PY ${selectedYear}, with ${fmt.shortNum(selTrend?.total_benes)} aligned beneficiaries.`}
         </div>
         <div style={{display:'flex',gap:28,marginTop:14,flexWrap:'wrap'}}>
           {[
             {label:'ACOs',           value:selTrend?.n_acos},
             {label:'Savers',         value:`${selTrend?.n_savers} (${selTrend?.pct_savers}%)`},
-            {label:'Program Sav Rate',value:selTrend?.prog_sav_rate!=null?`${selTrend.prog_sav_rate.toFixed(2)}%`:'—'},
-            {label:'Shared Savings', value:fmt.dollars(selSavings)},
+            {label:'Gross Savings Rate',value:selTrend?.prog_sav_rate!=null?`${selTrend.prog_sav_rate.toFixed(2)}%`:'—'},
+            {label:'Net to ACOs', value:fmt.dollars(selSavings)},
             {label:'Avg Quality',    value:selTrend?.avg_qual!=null?`${Number(selTrend.avg_qual).toFixed(1)}%`:'—'},
           ].map(s => (
             <div key={s.label}>
@@ -806,7 +877,7 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
 
       {/* Risk Arrangement + Treemap */}
       <div className="chart-card">
-        <div className="chart-title">PY {selectedYear} — Risk Arrangement & Configuration Breakdown</div>
+        <div className="chart-title">PY {selectedYear}: Risk Arrangement & Configuration Breakdown</div>
         <div className="chart-subtitle">Box width = proportion of ACOs in each configuration. Hover for details.</div>
 
         {/* Risk summary cards */}
@@ -890,10 +961,10 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
               })}
               <div style={{display:'flex',gap:12,flexWrap:'wrap',marginTop:8}}>
                 {[
-                  {label:'TCC = Total Care Capitation',    color:'#1D6B3E'},
-                  {label:'PCC = Primary Care Capitation',  color:'#42BA97'},
-                  {label:'ePCC = Enhanced PCC election',   color:'#4a7a94'},
-                  {label:'APO = Advanced Payment Option',    color:'#335B74'},
+                  {label:'TCC = Total Care Capitation',    color:'#0B1829'},
+                  {label:'PCC = Primary Care Capitation',  color:'#20B2AA'},
+                  {label:'ePCC = Enhanced PCC election',   color:'#6f8fbf'},
+                  {label:'APO = Advanced Payment Option',    color:'#4a6fa5'},
                 ].map(l => (
                   <div key={l.label} style={{display:'flex',alignItems:'center',gap:5,fontSize:10,color:'var(--gray-600)'}}>
                     <div style={{width:10,height:10,borderRadius:2,background:l.color,flexShrink:0}}/>
@@ -907,11 +978,14 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
 
         {/* Option flags */}
         <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginTop:16}}>
-          {[
-            {label:'Enhanced PCC Elected',      yes:selRecs.filter(r=>r.enhanced_pcc==='Yes').length, total:selRecs.length, color:COLORS.green, note:'Higher primary care cap in exchange for tighter care management'},
-            {label:'APO (Advanced Payment Option) Elected',yes:selRecs.filter(r=>r.apo_election==='Yes').length,total:selRecs.length, color:COLORS.teal,  note:'Advance capitation for non-PCP services by PCPs; APO ACOs averaged 4.91% savings vs 4.42% non-APO in PY2023'},
-            {label:'Stop Loss Elected',           yes:selRecs.filter(r=>r.stop_loss==='Yes').length,   total:selRecs.length, color:COLORS.blue,  note:'Reinsurance against catastrophic individual patient costs'},
-          ].map(item => {
+          {(() => {
+            const avgOf = rs => { const v = rs.filter(r => r.sav_rate!=null); return v.length ? (v.reduce((s,r)=>s+r.sav_rate,0)/v.length).toFixed(2) : '—'; };
+            const apoY = selRecs.filter(r=>r.apo_election==='Yes'), apoN = selRecs.filter(r=>r.apo_election==='No');
+            return [
+            {label:'Enhanced PCC Elected',      yes:selRecs.filter(r=>r.enhanced_pcc==='Yes').length, total:selRecs.length, color:COLORS.green, note:'Primary care capitation at a higher percentage than Basic PCC, elected by the ACO'},
+            {label:'APO (Advanced Payment Option) Elected',yes:apoY.length,total:selRecs.length, color:COLORS.teal,  note:`Prospective monthly payments for non-primary-care services in place of part of fee-for-service claims. In PY ${selectedYear}, APO ACOs averaged ${avgOf(apoY)}% savings vs ${avgOf(apoN)}% for others.`},
+            {label:'Stop Loss Elected',           yes:selRecs.filter(r=>r.stop_loss==='Yes').length,   total:selRecs.length, color:COLORS.blue,  note:'Optional arrangement that limits the ACO\'s exposure to high-cost beneficiaries'},
+          ];})().map(item => {
             const pct = item.total > 0 ? Math.round(item.yes/item.total*100) : 0;
             return (
               <div key={item.label} style={{padding:'12px 14px',borderRadius:'var(--radius)',background:'var(--gray-50)',border:'1px solid var(--gray-200)'}}>
@@ -933,20 +1007,26 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
       </div>
 
       {/* High Performers Pool */}
-      {selectedYear===2023 && (
+      {selRecs.some(r => r.hpp_flag!=null) && (
         <div className="chart-card" style={{borderLeft:'4px solid var(--gold)'}}>
-          <div className="chart-title">High Performers Pool (HPP) — PY 2023 Only</div>
+          <div className="chart-title">High Performers Pool (HPP): PY {selectedYear}</div>
           <div className="chart-subtitle">
-            ACOs meeting CI/SEP requirements AND performing above the High Performers threshold
-            receive an additional bonus from a shared pool. Carries forward into LEAD.
+            ACOs that meet the High Performers Pool criteria receive an additional bonus for quality performance.
+            CI/SEP (Continuous Improvement / Sustained Exceptional Performance) is assessed only for ACOs that
+            participated in the prior year.
           </div>
           <div style={{display:'flex',gap:16,marginTop:14,flexWrap:'wrap'}}>
-            {[
-              {label:'HPP Qualifiers',       value:`${selRecs.filter(r=>r.hpp_flag==='Yes').length}`, sub:'of 132 ACOs (18%)',              color:COLORS.gold},
-              {label:'HPP Avg Savings Rate', value:`${(()=>{const h=selRecs.filter(r=>r.hpp_flag==='Yes'&&r.sav_rate!=null);return h.length?(h.reduce((s,r)=>s+r.sav_rate,0)/h.length).toFixed(2):0})()}%`, sub:'vs 4.0% non-HPP avg', color:COLORS.green},
-              {label:'HPP Total Savings',    value:fmt.dollars(selRecs.filter(r=>r.hpp_flag==='Yes').reduce((s,r)=>s+(r.shared_savings||0),0)), sub:'= 44% of all PY2023 savings', color:COLORS.teal},
-              {label:'CI/SEP Met',           value:`${selRecs.filter(r=>r.cisep_flag==='Yes').length}`, sub:'of 83 eligible ACOs (88%)',        color:COLORS.blue},
-            ].map(s => (
+            {(() => {
+              const hpp = selRecs.filter(r=>r.hpp_flag==='Yes'), non = selRecs.filter(r=>r.hpp_flag!=='Yes');
+              const avg = rs => { const v = rs.filter(r=>r.sav_rate!=null); return v.length ? v.reduce((s,r)=>s+r.sav_rate,0)/v.length : null; };
+              const hppSav = hpp.reduce((s,r)=>s+(r.shared_savings||0),0);
+              const elig = selRecs.filter(r=>r.cisep_flag!=null), met = elig.filter(r=>r.cisep_flag==='Yes');
+              return [
+              {label:'HPP Qualifiers',       value:`${hpp.length}`, sub:`of ${selRecs.length} ACOs (${Math.round(hpp.length/selRecs.length*100)}%)`, color:COLORS.gold},
+              {label:'HPP Avg Savings Rate', value:avg(hpp)!=null?`${avg(hpp).toFixed(2)}%`:'—', sub:`vs ${avg(non)!=null?avg(non).toFixed(2):'—'}% for other ACOs`, color:COLORS.green},
+              {label:'HPP Total Savings',    value:fmt.dollars(hppSav), sub:`${selSavings>0?Math.round(hppSav/selSavings*100):0}% of all PY ${selectedYear} earned savings`, color:COLORS.teal},
+              {label:'CI/SEP Met',           value:`${met.length}`, sub:`of ${elig.length} assessed ACOs (${elig.length?Math.round(met.length/elig.length*100):0}%)`, color:COLORS.blue},
+            ];})().map(s => (
               <div key={s.label} style={{flex:1,minWidth:140,padding:'16px',
                 borderRadius:'var(--radius)',border:`1px solid ${s.color}22`,background:`${s.color}08`}}>
                 <div style={{fontSize:10,fontWeight:700,color:s.color,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:6}}>{s.label}</div>
@@ -955,14 +1035,10 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
               </div>
             ))}
           </div>
-          <div style={{marginTop:12,padding:'10px 14px',background:'var(--gold-light)',borderRadius:'var(--radius)',fontSize:12,color:'var(--amber)'}}>
-            <strong>LEAD context:</strong> The CI/SEP framework and HPP both carry into LEAD.
-            ACOs meeting CI/SEP in REACH start LEAD with demonstrated track records that strengthen their application.
-          </div>
           {/* HPP ACO table */}
           <div style={{marginTop:16}}>
             <div style={{fontSize:12,fontWeight:700,color:'var(--gray-700)',marginBottom:8,textTransform:'uppercase',letterSpacing:'0.06em'}}>
-              PY 2023 High Performers Pool — All Qualifying ACOs
+              PY {selectedYear} High Performers Pool: All Qualifying ACOs
             </div>
             <div className="table-scroll">
               <table className="data-table">
@@ -990,7 +1066,7 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
                       </td>
                       <td style={{fontSize:11,color:'var(--gray-600)'}}>{r.aco_type}</td>
                       <td style={{fontSize:10,fontWeight:600,color:'var(--gray-600)'}}>{r.config_key}</td>
-                      <td style={{textAlign:'right'}}><strong style={{color:COLORS.green}}>{r.sav_rate!=null?`${r.sav_rate.toFixed(2)}%`:'—'}</strong></td>
+                      <td style={{textAlign:'right'}}><strong style={{color:(r.sav_rate||0)>0?COLORS.green:COLORS.red}}>{r.sav_rate!=null?`${r.sav_rate.toFixed(2)}%`:'—'}</strong></td>
                       <td style={{textAlign:'right'}}>{r.qual_scr!=null?`${r.qual_scr.toFixed(1)}%`:'—'}</td>
                       <td style={{textAlign:'right'}}>{r.acr_scr!=null?r.acr_scr.toFixed(2):'—'}</td>
                       <td style={{textAlign:'right'}}>{r.tfu_scr!=null?`${r.tfu_scr.toFixed(1)}%`:'—'}</td>
@@ -1000,7 +1076,7 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
                 </tbody>
               </table>
             </div>
-            <div style={{fontSize:11,color:'var(--gray-400)',marginTop:6}}>Click any row → ACO Deep Dive</div>
+            <div style={{fontSize:11,color:'var(--gray-400)',marginTop:6}}>Click any row to open the ACO Deep Dive</div>
           </div>
         </div>
       )}
@@ -1059,19 +1135,16 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
                 <th>Program</th>
                 <th style={{textAlign:'right'}}>ACOs</th>
                 <th style={{textAlign:'right'}}>Beneficiaries</th>
-                <th style={{textAlign:'right'}}>Prog Sav Rate</th>
-                <th style={{textAlign:'right'}}>Shared Savings</th>
+                <th style={{textAlign:'right'}}>Gross Sav Rate</th>
+                <th style={{textAlign:'right'}}>Net to ACOs</th>
                 <th style={{textAlign:'right'}}>% Savers</th>
                 <th style={{textAlign:'right'}}>Avg Quality</th>
                 <th>Key Change</th>
               </tr>
             </thead>
             <tbody>
-              {[
-                {yr:2021, prog:'GPDC',      months:'9-mo',  key:'Program launched (Apr–Dec). Pay-for-reporting quality. 53 ACOs.'},
-                {yr:2022, prog:'GPDC',      months:'12-mo', key:'First full year. 99 ACOs. CAHPS SSM added. Quality still P4R.'},
-                {yr:2023, prog:'ACO REACH', months:'12-mo', key:'Rebrand to ACO REACH. 132 ACOs. P4P quality shift. HEBA introduced. HPP launched.'},
-              ].map(row => {
+              {YEARS.map(yr => ({ yr, prog:programName(yr),
+                  months:`${trendsData.find(t=>t.year===yr)?.months||12}-mo`, key:PROGRAM_EVENTS[yr]||'' })).map(row => {
                 const t   = chartData.find(d => d.year===row.yr);
                 const sav = records.filter(r=>r.perf_year===row.yr).reduce((s,r)=>s+(r.shared_savings||0),0);
                 return (
@@ -1080,7 +1153,7 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
                       <strong style={{color:'var(--navy)',fontSize:15}}>{row.yr}</strong>
                       <div style={{fontSize:10,color:'var(--gray-400)'}}>{row.months}</div>
                     </td>
-                    <td><span style={{fontSize:11,fontWeight:600,color:row.yr===2023?COLORS.teal:COLORS.blue}}>{row.prog}</span></td>
+                    <td><span style={{fontSize:11,fontWeight:600,color:row.prog==='ACO REACH'?COLORS.teal:COLORS.blue}}>{row.prog}</span></td>
                     <td style={{textAlign:'right',fontWeight:600}}>{t?.n_acos||'—'}</td>
                     <td style={{textAlign:'right'}}>{t?fmt.shortNum(t.total_benes):'—'}</td>
                     <td style={{textAlign:'right'}}>
@@ -1104,7 +1177,7 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
       <div className="chart-card">
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
           <div>
-            <div className="chart-title">All ACOs — Key Metrics</div>
+            <div className="chart-title">All ACOs: Key Metrics</div>
             <div className="chart-subtitle">Search across all {selRecs.length} ACOs for PY {selectedYear}</div>
           </div>
           <input type="text" value={acoSearch} onChange={e => setAcoSearch(e.target.value)}
@@ -1161,7 +1234,7 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
           </table>
         </div>
         <div style={{marginTop:8,fontSize:11,color:'var(--gray-400)'}}>
-          Showing top 50 by savings rate. Click any row → Deep Dive. Year filter above controls which PY is shown.
+          Showing the top 50 by savings rate. Click any row to open the Deep Dive. The year filter above sets the performance year.
         </div>
       </div>
 

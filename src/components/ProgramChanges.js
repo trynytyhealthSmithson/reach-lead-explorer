@@ -12,106 +12,110 @@ function yearStats(year) {
   return { n: yr.length, savers, savings, avgSav };
 }
 
-const YEARS = [
-  {
-    year: 2021,
-    title: 'Program Launch — Global DC Model',
-    badge: 'PY1',
-    color: COLORS.teal,
-    stats: yearStats(2021),
-    duration: '9 months (Apr–Dec)',
-    highlights: [
-      'Launched as the Global and Professional Direct Contracting (GPDC) Model under the Trump administration',
-      '53 Direct Contracting Entities (DCEs) participated in the first performance year',
-      'Two risk arrangements: Global (full risk) and Professional (50% risk)',
-      'Primary Care Capitation (PCC) and Total Care Capitation (TCC) arrangements introduced',
-      'Pay-for-reporting quality model — ACOs received quality withhold back regardless of score',
-      'Advanced Payment Option (APO) and Alignment Plus elections established',
-      'Enhanced PCC election introduced to incentivize PCP utilization',
-      '9-month performance period due to mid-year launch',
+const PUF_URL = 'https://data.cms.gov/cms-innovation-center-programs/accountable-care-models/aco-reach-financial-and-quality-results';
+const MODEL_URL = 'https://www.cms.gov/priorities/innovation/innovation-models/aco-reach';
+const DATA_YEARS = perfData.years || [...new Set(records.map(r => r.perf_year))].sort();
+
+const pctOf = (yr, test) => { const rs = records.filter(r => r.perf_year === yr); return rs.length ? rs.filter(test).length : 0; };
+const fmtM = v => `$${(v / 1e6).toFixed(1)}M`;
+
+const YEAR_CONTENT = {
+  2021: {
+    title: 'First Performance Year: Global and Professional Direct Contracting',
+    duration: '9 months (April to December)',
+    highlights: () => [
+      `${yearStats(2021).n} Direct Contracting Entities participated in the first performance year`,
+      'Two risk arrangements: Global (100% of savings and losses) and Professional (50%)',
+      'Primary Care Capitation (PCC) and Total Care Capitation (TCC, Global only) payment options',
+      'Quality was pay-for-reporting: every participant received a 100% quality score',
+      `${pctOf(2021, r => r.aco_type === 'High Needs')} High Needs and ${pctOf(2021, r => r.aco_type === 'New Entrant')} New Entrant participants alongside Standard ACOs`,
     ],
     changes: [],
-    links: [
-      { label: 'GPDC Model Overview', url: 'https://innovation.cms.gov/innovation-models/gpdc-model' },
-      { label: 'PY1 Financial & Quality Results PUF', url: 'https://innovation.cms.gov/data-and-reports/2022/gpdc-puf' },
-      { label: 'PY1 Data Dictionary', url: 'https://innovation.cms.gov/data-and-reports/2022/gpdc-puf' },
-    ],
   },
-  {
-    year: 2022,
-    title: 'Renamed to ACO REACH — Equity Focus Added',
-    badge: 'PY2',
-    color: COLORS.blue,
-    stats: yearStats(2022),
-    duration: '12 months (Jan–Dec)',
-    highlights: [
-      'Model renamed from GPDC to ACO Realizing Equity, Access, and Community Health (ACO REACH) under the Biden administration',
-      '99 ACOs participated — nearly doubling from PY1',
-      'Health Equity Benchmark Adjustment (HEBA) introduced to correct for historically suppressed spending in underserved communities',
-      'CI/SEP (Continuous Improvement / Sustained Exceptional Performance) criteria established for PY2023 eligibility',
-      'Stop Loss arrangement available to Global risk ACOs for the first time',
-      'CAHPS SSM patient experience measures introduced (pay-for-reporting in PY2)',
-      'TFU (Timely Follow-Up) and DAH (Days at Home) quality measures added',
-      'New Entrant entity type created for organizations new to Medicare risk',
+  2022: {
+    title: 'First Full Year, Final Year as GPDC',
+    duration: '12 months (January to December)',
+    highlights: () => [
+      `${yearStats(2022).n} participants, up from ${yearStats(2021).n} in PY 2021`,
+      'Quality remained mostly pay-for-reporting',
+      'CAHPS patient experience measures and Timely Follow-Up were reported; CAHPS did not affect the quality score',
+      'In February 2022, CMS announced that GPDC would be redesigned as ACO REACH beginning January 2023',
     ],
     changes: [
-      { type: 'Added', text: 'HEBA adjustment — first-ever CMS mechanism to correct equity-related benchmark suppression' },
-      { type: 'Added', text: 'Stop Loss option for Global risk ACOs' },
-      { type: 'Added', text: 'CAHPS SSM quality measures (pay-for-reporting)' },
-      { type: 'Renamed', text: 'GPDC Model → ACO REACH Model' },
-    ],
-    links: [
-      { label: 'ACO REACH Model Page', url: 'https://innovation.cms.gov/innovation-models/aco-reach' },
-      { label: 'PY2 Financial & Quality Results PUF', url: 'https://innovation.cms.gov/data-and-reports/2023/aco-reach-puf' },
-      { label: 'PY2 Data Dictionary', url: 'https://innovation.cms.gov/data-and-reports/2023/aco-reach-puf' },
-      { label: 'HEBA Methodology', url: 'https://innovation.cms.gov/innovation-models/aco-reach' },
+      { type: 'Added', text: 'CAHPS summary survey measures reported (pay-for-reporting)' },
+      { type: 'Added', text: 'Timely Follow-Up (TFU) quality measure' },
     ],
   },
-  {
-    year: 2023,
-    title: 'Full Maturity — Pay-for-Performance & HPP Launch',
-    badge: 'PY3',
-    color: COLORS.green,
-    stats: yearStats(2023),
-    duration: '12 months (Jan–Dec)',
-    highlights: [
-      '132 ACOs participated — 25% growth from PY2, covering 2M+ beneficiaries',
-      'Quality shifted from pay-for-reporting to pay-for-performance — largest structural quality change in the model',
-      'High Performers Pool (HPP) launched — 24 ACOs qualified for bonus payments averaging 8.27% savings',
-      'Concurrent risk adjustment introduced for High Needs ACOs — benchmarks now incorporate current-year diagnoses',
-      'HEBA fully operational — all 132 ACOs received both upward ($70.4M) and downward ($69.7M) adjustments',
-      'Total earned savings reached $923.3M — largest single-year savings in the model',
-      'CI/SEP ACOs (64 of 132) averaged 5.80% savings vs 1.07% for non-CI/SEP — a 5.4× difference',
-      'Program declared final year of ACO REACH; transition to LEAD Model announced',
-    ],
+  2023: {
+    title: 'First Year as ACO REACH: Pay-for-Performance Quality',
+    duration: '12 months (January to December)',
+    highlights: () => {
+      const y = records.filter(r => r.perf_year === 2023);
+      const up = y.reduce((s, r) => s + (r.heba_up_amt || 0), 0), dn = y.reduce((s, r) => s + (r.heba_down_amt || 0), 0);
+      return [
+        `${y.length} ACOs participated, covering ${(y.reduce((s, r) => s + (r.bene_cnt || 0), 0) / 1e6).toFixed(1)} million aligned beneficiaries`,
+        'Quality moved from pay-for-reporting to pay-for-performance',
+        `High Performers Pool began: ${pctOf(2023, r => r.hpp_flag === 'Yes')} ACOs qualified`,
+        `Health Equity Benchmark Adjustment began: ${fmtM(up)} in upward and ${fmtM(-dn)} in downward adjustments across all ACOs`,
+        `CI/SEP assessed for ACOs that also participated in PY 2022: ${pctOf(2023, r => r.cisep_flag === 'Yes')} of ${pctOf(2023, r => r.cisep_flag != null)} met it`,
+        'Health Equity Data Reporting (HEDR) adjustment: up to 10 points added to the quality score for complete beneficiary demographic data',
+      ];
+    },
     changes: [
-      { type: 'New', text: 'High Performers Pool (HPP) — bonus payments for top-performing ACOs' },
-      { type: 'New', text: 'Concurrent risk adjustment for High Needs ACOs' },
-      { type: 'Changed', text: 'Quality: Pay-for-Reporting → Pay-for-Performance' },
-      { type: 'Changed', text: 'CAHPS SSM measures now count toward quality score (no longer just reported)' },
-      { type: 'Added', text: 'HEDR (Health Equity Data Reporting) adjustment — up to 10pp quality bonus for demographic data collection' },
-    ],
-    links: [
-      { label: 'PY3 Financial & Quality Results PUF', url: 'https://innovation.cms.gov/data-and-reports/2024/aco-reach-puf' },
-      { label: 'PY3 Data Dictionary', url: 'https://innovation.cms.gov/data-and-reports/2024/aco-reach-puf' },
-      { label: 'ACO REACH PY3 Results Press Release', url: 'https://www.cms.gov/newsroom/press-releases' },
-      { label: 'HPP Methodology', url: 'https://innovation.cms.gov/innovation-models/aco-reach' },
+      { type: 'Changed', text: 'Quality: pay-for-reporting to pay-for-performance' },
+      { type: 'New', text: 'High Performers Pool' },
+      { type: 'New', text: 'Health Equity Benchmark Adjustment (HEBA)' },
+      { type: 'New', text: 'Health Equity Data Reporting (HEDR) quality adjustment' },
+      { type: 'Renamed', text: 'GPDC Model to ACO REACH Model' },
     ],
   },
-];
+  2024: {
+    title: 'Fourth Performance Year',
+    duration: '12 months (January to December)',
+    highlights: () => {
+      const y = records.filter(r => r.perf_year === 2024);
+      const up = y.reduce((s, r) => s + (r.heba_up_amt || 0), 0), dn = y.reduce((s, r) => s + (r.heba_down_amt || 0), 0);
+      return [
+        `${y.length} ACOs participated, covering ${(y.reduce((s, r) => s + (r.bene_cnt || 0), 0) / 1e6).toFixed(1)} million aligned beneficiaries`,
+        `${pctOf(2024, r => r.hpp_flag === 'Yes')} ACOs qualified for the High Performers Pool, up from ${pctOf(2023, r => r.hpp_flag === 'Yes')} in PY 2023`,
+        `The benchmark equity adjustment is published as the Population Adjustment: ${fmtM(up)} upward and ${fmtM(-dn)} downward`,
+        'The quality data adjustment is published as the Data Reporting (DR) adjustment: 5 points held harmless for demographic reporting, plus up to 5 points for complete social determinants of health data',
+        'A CAHPS composite score (share of possible patient experience points earned) is published for the first time',
+      ];
+    },
+    changes: [
+      { type: 'Renamed', text: 'HEBA fields published as the Population Adjustment (PA)' },
+      { type: 'Renamed', text: 'HEDR adjustment published as the Data Reporting (DR) adjustment, now including social determinants of health data' },
+      { type: 'Added', text: 'CAHPS composite score' },
+    ],
+  },
+};
 
-const LEAD_TIMELINE = [
-  { date: 'Nov 2024', event: 'CMS announces LEAD Model as ACO REACH successor' },
-  { date: 'Mar 2025', event: 'LEAD Request for Applications (RFA) released' },
-  { date: 'May 17, 2026', event: 'LEAD application deadline', highlight: true },
-  { date: 'Jan 1, 2027', event: 'LEAD Model performance year 1 begins' },
-  { date: '2027–2036', event: '10-year model term — no benchmark rebasing' },
-];
+const COLORS_BY_INDEX = [COLORS.teal, COLORS.blue, COLORS.green, COLORS.navy, COLORS.purple, COLORS.amber];
+
+const YEARS = DATA_YEARS.map((year, i) => {
+  const c = YEAR_CONTENT[year] || {
+    title: `Performance Year ${year}`,
+    duration: '12 months (January to December)',
+    highlights: () => [`${yearStats(year).n} ACOs participated`],
+    changes: [],
+  };
+  return {
+    year, title: c.title, badge: `PY${i + 1}`, color: COLORS_BY_INDEX[i % COLORS_BY_INDEX.length],
+    stats: yearStats(year), duration: c.duration, highlights: c.highlights(), changes: c.changes,
+    links: [
+      { label: `Financial and Quality Results PUF (all years)`, url: PUF_URL },
+      { label: 'ACO REACH Model page', url: MODEL_URL },
+    ],
+  };
+});
 
 export default function ProgramChanges() {
-  const [expanded, setExpanded] = useState({ 2023: true });
+  const latestYear = DATA_YEARS[DATA_YEARS.length - 1];
+  const [expanded, setExpanded] = useState({ [latestYear]: true });
 
-  const totalACOs = 150;
+  const totalACOs = new Set(records.map(r => r.aco_id)).size;
+  const peak = YEARS.reduce((m, y) => (y.stats.n > (m?.stats.n || 0) ? y : m), null);
   const totalSavings = records.reduce((s, r) => s + (r.shared_savings || 0), 0);
 
   return (
@@ -119,18 +123,18 @@ export default function ProgramChanges() {
 
       {/* Hero summary */}
       <div className="chart-card">
-        <div className="chart-title">ACO REACH Model — Program History</div>
+        <div className="chart-title">ACO REACH Model: Program History</div>
         <div className="chart-subtitle">
-          The ACO REACH Model (formerly Global and Professional Direct Contracting) ran from April 2021
-          through December 2026. This page summarizes key regulatory changes, structural milestones, and
-          actual performance data for each year, alongside links to official CMS documentation.
+          The model began in April 2021 as Global and Professional Direct Contracting (GPDC), became ACO REACH
+          in January 2023, and runs through December 31, 2026. This page summarizes the structural changes and
+          published results for each performance year with public data.
         </div>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginTop:16 }}>
           {[
-            { label:'Performance Years', value:'3 (PY1–PY3)' },
+            { label:'Performance Years With Data', value:`${DATA_YEARS.length} (PY ${DATA_YEARS[0]} to ${latestYear})` },
             { label:'Unique ACOs', value:`${totalACOs}` },
             { label:'Total Earned Savings', value:`$${(totalSavings/1e9).toFixed(2)}B` },
-            { label:'Peak ACO Count', value:`132 (PY2023)` },
+            { label:'Peak ACO Count', value:`${peak?.stats.n} (PY ${peak?.year})` },
           ].map(s => (
             <div key={s.label} style={{ textAlign:'center' }}>
               <div style={{ fontSize:'1.7rem', fontWeight:800, color:'var(--teal)' }}>{s.value}</div>
@@ -255,51 +259,6 @@ export default function ProgramChanges() {
         );
       })}
 
-      {/* LEAD Transition Timeline */}
-      <div className="chart-card" style={{ borderLeft:`4px solid ${COLORS.gold}` }}>
-        <div className="chart-title">What Comes Next — LEAD Model Timeline</div>
-        <div className="chart-subtitle">
-          ACO REACH concluded at the end of PY2023 (December 2026). The LEAD Model
-          (Making Care Primary's successor) launches January 1, 2027.
-        </div>
-        <div style={{ marginTop:16 }}>
-          {LEAD_TIMELINE.map((item, i) => (
-            <div key={i} style={{ display:'flex', gap:16, marginBottom:14, alignItems:'flex-start' }}>
-              <div style={{ width:100, flexShrink:0, fontSize:12, fontWeight:700,
-                color: item.highlight ? COLORS.gold : 'var(--gray-500)',
-                paddingTop:1 }}>
-                {item.date}
-              </div>
-              <div style={{ flex:1, padding:'8px 12px', borderRadius:'var(--radius)',
-                background: item.highlight ? `${COLORS.gold}0f` : 'var(--gray-50)',
-                border: item.highlight ? `1px solid ${COLORS.gold}44` : '1px solid var(--gray-200)' }}>
-                <div style={{ fontSize:12, color: item.highlight ? 'var(--navy)' : 'var(--gray-700)',
-                  fontWeight: item.highlight ? 700 : 400 }}>
-                  {item.event}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginTop:8 }}>
-          {[
-            { label:'LEAD Model Page', url:'https://innovation.cms.gov/innovation-models/making-care-primary' },
-            { label:'LEAD RFA', url:'https://innovation.cms.gov/media/document/lead-rfa' },
-            { label:'LEAD Fact Sheet', url:'https://www.cms.gov/newsroom/fact-sheets' },
-          ].map(link => (
-            <a key={link.label} href={link.url} target="_blank" rel="noreferrer"
-              style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:12,
-                color:'var(--teal-dark)', padding:'5px 12px', borderRadius:20,
-                border:'1px solid var(--teal)', textDecoration:'none',
-                background:'var(--teal-light)' }}
-              onMouseEnter={e => e.currentTarget.style.background=COLORS.teal+'22'}
-              onMouseLeave={e => e.currentTarget.style.background='var(--teal-light)'}>
-              ↗ {link.label}
-            </a>
-          ))}
-        </div>
-      </div>
-
       {/* Data sources */}
       <div className="chart-card" style={{ background:'var(--gray-50)' }}>
         <div className="chart-title">Data Sources & Methodology</div>
@@ -309,9 +268,7 @@ export default function ProgramChanges() {
               Public Use Files (PUFs)
             </div>
             {[
-              { label:'PY2021 ACO REACH PUF', url:'https://innovation.cms.gov/data-and-reports/2022/gpdc-puf' },
-              { label:'PY2022 ACO REACH PUF', url:'https://innovation.cms.gov/data-and-reports/2023/aco-reach-puf' },
-              { label:'PY2023 ACO REACH PUF', url:'https://innovation.cms.gov/data-and-reports/2024/aco-reach-puf' },
+              { label:'ACO REACH Financial and Quality Results (data.cms.gov)', url:PUF_URL },
             ].map(link => (
               <a key={link.label} href={link.url} target="_blank" rel="noreferrer"
                 style={{ display:'block', fontSize:12, color:'var(--teal-dark)', marginBottom:6,
@@ -327,10 +284,8 @@ export default function ProgramChanges() {
               Additional CMS Resources
             </div>
             {[
-              { label:'ACO REACH Model Overview', url:'https://innovation.cms.gov/innovation-models/aco-reach' },
-              { label:'ACO REACH Methodology Documents', url:'https://innovation.cms.gov/innovation-models/aco-reach' },
-              { label:'CMS Innovation Center', url:'https://innovation.cms.gov' },
-              { label:'LEAD Model (Making Care Primary)', url:'https://innovation.cms.gov/innovation-models/making-care-primary' },
+              { label:'ACO REACH Model page', url:MODEL_URL },
+              { label:'CMS Innovation Center', url:'https://www.cms.gov/priorities/innovation' },
             ].map(link => (
               <a key={link.label} href={link.url} target="_blank" rel="noreferrer"
                 style={{ display:'block', fontSize:12, color:'var(--teal-dark)', marginBottom:6,
