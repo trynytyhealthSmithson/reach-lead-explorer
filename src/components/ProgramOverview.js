@@ -5,6 +5,8 @@ import {
   ResponsiveContainer, ReferenceLine, Cell,
 } from 'recharts';
 import { fmt, COLORS, CONFIG_COLORS, CONFIG_LABELS, PROGRAM_EVENTS, YEAR_NARRATIVES, CAHPS_LABELS } from '../utils';
+import KPITooltip, { TOOLTIPS } from './KPITooltip';
+import { CMS_PUBLISHED } from '../utils';
 import trendsData from '../data/reach_program_trends.json';
 import configMatrix from '../data/reach_config_matrix.json';
 
@@ -97,12 +99,6 @@ const CAHPS_SHORT = {
   ssm_hpe:'Health Promotion', ssm_spr:'Stewardship of Resources',
 };
 // Program totals as published by CMS, in $ millions (see the reconciliation card for sources)
-const CMS_PUBLISHED = {
-  2021: { medicare: 70.4 },
-  2022: { medicare: 371.1, acos: 484.1 },
-  2023: { gross: 1643, medicare: 694.6, acos: 948.4 },
-  2024: { gross: 2511, medicare: 988.3, acos: 1522 },
-};
 const programName = yr => (yr <= 2022 ? 'GPDC' : 'ACO REACH');
 const signed = (v, d=1, unit='') => v == null || isNaN(v) ? '' : `${v > 0 ? '+' : v < 0 ? '-' : ''}${unit}${Math.abs(v).toFixed(d)}`;
 
@@ -349,21 +345,21 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
           {[
             { title:'ACOs Participating',   value:fmt.num(latest?.n_acos),
               delta:`${(latest?.n_acos-prior?.n_acos)>0?'+':''}${latest?.n_acos-prior?.n_acos} vs PY ${prior?.year}` },
-            { title:'Net Savings to ACOs',  value:fmt.dollars(records.filter(r=>r.perf_year===latest?.year).reduce((s,r)=>s+(r.shared_savings||0),0)),
+            { title:'Net Savings to ACOs', tip:{ term:'Net Savings to ACOs', def:'Sum of earned (shared) savings across ACOs, net of shared losses, as published in the PUF before final settlement.' }, value:fmt.dollars(records.filter(r=>r.perf_year===latest?.year).reduce((s,r)=>s+(r.shared_savings||0),0)),
               delta:`vs ${fmt.dollars(records.filter(r=>r.perf_year===prior?.year).reduce((s,r)=>s+(r.shared_savings||0),0))} in PY ${prior?.year}` },
-            { title:'% Earning Savings',    value:`${latest?.pct_savers}%`,
+            { title:'% Earning Savings', tip:{ term:'% Earning Savings', def:'Share of ACOs with a positive savings rate in the year.' }, value:`${latest?.pct_savers}%`,
               delta:`${signed(latest?.pct_savers-prior?.pct_savers)} pts vs PY ${prior?.year}` },
-            { title:'Gross Savings Rate', value:latest?.prog_sav_rate!=null?`${latest.prog_sav_rate.toFixed(2)}%`:'—',
+            { title:'Gross Savings Rate', tip:TOOLTIPS.gross_rate_cms, value:latest?.prog_sav_rate!=null?`${latest.prog_sav_rate.toFixed(2)}%`:'—',
               note:'CMS basis',
               delta:prior?.prog_sav_rate!=null?`${signed(latest?.prog_sav_rate-prior?.prog_sav_rate, 2)} pts vs PY ${prior?.year}`:''},
-            { title:'Assigned Beneficiaries', value:fmt.shortNum(latest?.total_benes),
+            { title:'Aligned Beneficiaries', tip:TOOLTIPS.bene_cnt, value:fmt.shortNum(latest?.total_benes),
               delta:`${latest?.total_benes>=prior?.total_benes?'+':'-'}${fmt.shortNum(Math.abs(latest?.total_benes-prior?.total_benes))} vs PY ${prior?.year}` },
-            { title:'Avg Expense PBPM',     value:latest?.avg_exp_pbpm!=null?`$${Number(latest.avg_exp_pbpm).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`:'—',
+            { title:'Avg Expense PBPM', tip:TOOLTIPS.exp_pbpm, value:latest?.avg_exp_pbpm!=null?`$${Number(latest.avg_exp_pbpm).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`:'—',
               delta:prior?.avg_exp_pbpm!=null?`${signed(latest?.avg_exp_pbpm-prior?.avg_exp_pbpm, 2, '$')} vs PY ${prior?.year}`:''},
           ].map((k,ki) => (
             <div className="chart-card" key={ki} style={{padding:'14px 18px'}}>
               <div style={{fontSize:11,fontWeight:600,color:'var(--gray-500)',textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:6}}>
-                {k.title}{k.note&&<span style={{fontWeight:400,color:'var(--gray-400)',fontSize:10,marginLeft:4}}>({k.note})</span>}
+                {k.tip ? <KPITooltip {...k.tip} label={k.title} /> : k.title}{k.note&&<span style={{fontWeight:400,color:'var(--gray-400)',fontSize:10,marginLeft:4}}>({k.note})</span>}
               </div>
               <div style={{fontSize:'1.6rem',fontWeight:700,color:'var(--navy)',lineHeight:1}}>{k.value}</div>
               {k.delta&&<div style={{fontSize:11,color:'var(--gray-500)',marginTop:4}}>{k.delta}</div>}
@@ -549,7 +545,7 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
 
       {/* ACO Participation & Beneficiaries */}
       <div className="chart-card">
-        <div className="chart-title">ACO Participation & Assigned Beneficiaries</div>
+        <div className="chart-title">ACO Participation & Aligned Beneficiaries</div>
         <div className="chart-subtitle">Number of ACOs (bars, left) and total aligned beneficiaries (line, right)</div>
         <ResponsiveContainer width="100%" height={240}>
           <ComposedChart data={chartData} margin={{top:8,right:56,left:0,bottom:0}}>

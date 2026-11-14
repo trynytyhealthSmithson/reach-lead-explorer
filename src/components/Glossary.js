@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 const TERMS = [
   // Financial & Savings
   { section:'Financial & Savings', term:'Savings Rate', abbr:'SAV_RATE',
-    def:'Gross savings divided by the final benchmark: (Benchmark minus Total Cost of Care) ÷ Benchmark × 100. A positive rate means the ACO spent less than its benchmark; a negative rate means it spent more. The Program Overview also shows a program-level rate that weights each ACO by its benchmark.' },
+    def:'Gross savings divided by the final benchmark: (Benchmark minus Total Cost of Care) ÷ Benchmark × 100. A positive rate means the ACO spent less than its benchmark; a negative rate means it spent more. The Program Overview instead shows a program-level gross savings rate on the basis CMS uses for its published results: measured against the benchmark before the Global discount, with total cost of care after stop-loss.' },
   { section:'Financial & Savings', term:'Gross Savings', abbr:'GROSS_SAVINGS',
     def:'Final benchmark minus total cost of care. The savings amount before the sharing rate, discount and quality adjustments are applied.' },
   { section:'Financial & Savings', term:'Earned Savings (Shared Savings)', abbr:'SHARED_SAVINGS',

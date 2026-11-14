@@ -1,24 +1,19 @@
-import React, { useRef, useState } from 'react';
-import { exportChartPNG } from '../utils';
+import React from 'react';
 
 /**
- * ChartCard: wraps any chart with a hover-reveal "Download PNG" export button.
+ * ChartCard: card layout for a chart (title, subtitle, optional header control).
+ * The Download PNG button comes from the app-wide PngExport component.
  * Usage: <ChartCard title="My Chart" filename="my-chart">
  *          <ResponsiveContainer>...</ResponsiveContainer>
  *        </ChartCard>
  */
 export default function ChartCard({ title, sub, filename, children, style, headerRight }) {
-  const cardRef  = useRef(null);
-  const [hover, setHover] = useState(false);
-  const exportName = filename || (title ? title.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'chart');
 
   return (
     <div
       className="chart-card"
-      ref={cardRef}
+      data-filename={filename}
       style={{ position: 'relative', ...style }}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
     >
       {/* Header row */}
       {(title || headerRight) && (
@@ -35,25 +30,6 @@ export default function ChartCard({ title, sub, filename, children, style, heade
       {/* Content */}
       {children}
 
-      {/* Export button, shown on hover */}
-      {hover && (
-        <button
-          onClick={() => exportChartPNG(cardRef.current, exportName)}
-          title="Export chart as PNG"
-          style={{
-            position: 'absolute', top: 10, right: 10,
-            padding: '3px 9px', fontSize: 11, fontFamily: 'var(--font)',
-            border: '1px solid var(--gray-300)', borderRadius: 'var(--radius)',
-            background: 'white', color: 'var(--gray-600)', cursor: 'pointer',
-            opacity: 0.9, zIndex: 10, fontWeight: 500,
-            boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-          }}
-          onMouseEnter={e => { e.target.style.background = 'var(--teal-light)'; e.target.style.color = 'var(--teal-dark)'; }}
-          onMouseLeave={e => { e.target.style.background = 'white'; e.target.style.color = 'var(--gray-600)'; }}
-        >
-          Download PNG
-        </button>
-      )}
     </div>
   );
 }

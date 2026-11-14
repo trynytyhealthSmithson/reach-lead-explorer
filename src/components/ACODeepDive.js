@@ -6,7 +6,8 @@ import {
 } from 'recharts';
 import { fmt, COLORS, CONFIG_COLORS, CONFIG_LABELS, CAHPS_LABELS, ordinal } from '../utils';
 import acoList from '../data/reach_aco_list.json';
-import { generateACOReport } from '../generateACOReport';
+import { generateREACHDeck } from '../generateREACHDeck';
+import KPITooltip, { TOOLTIPS } from './KPITooltip';
 
 const sortedACOs = [...acoList].sort((a, b) => a.aco_name.localeCompare(b.aco_name));
 
@@ -85,10 +86,10 @@ function ToggleGroup({ value, options, onChange }) {
   );
 }
 
-const KPICard = ({ title, value, sub, color, note }) => (
+const KPICard = ({ title, value, sub, color, note, tip }) => (
   <div className="chart-card" style={{ padding:'14px 16px' }}>
     <div style={{ fontSize:10, fontWeight:700, color:'var(--gray-500)', textTransform:'uppercase',
-      letterSpacing:'0.07em', marginBottom:6 }}>{title}</div>
+      letterSpacing:'0.07em', marginBottom:6 }}>{tip ? <KPITooltip {...tip} label={title} /> : title}</div>
     <div style={{ fontSize:'1.5rem', fontWeight:700, color: color||'var(--navy)', lineHeight:1 }}>{value}</div>
     {sub  && <div style={{ fontSize:11, color:'var(--gray-500)', marginTop:4 }}>{sub}</div>}
     {note && <div style={{ fontSize:10, color:'var(--gray-400)', marginTop:3, fontStyle:'italic' }}>{note}</div>}
@@ -405,7 +406,7 @@ export default function ACODeepDive({
   const handleExportReport = async () => {
     if (!aco || !latest) return;
     try {
-      await generateACOReport(
+      await generateREACHDeck(
         aco, acoRecords, records,
         (msg) => setReportStatus(msg)
       );
@@ -457,15 +458,27 @@ export default function ACODeepDive({
     return computeRVM(acoRecords[rvmPair.idx], acoRecords[rvmPair.idx - 1]);
   }, [rvmPair, acoRecords]);
 
-  // Peer comparison: same config_key + same perf year as latest
+  // Peer comparison: same perf year as latest, narrowed by the chosen peer group
+  const [peerMode, setPeerMode] = useState('config');
   const peerRecs = useMemo(() => {
     if (!latest) return [];
     return records.filter(r =>
-      r.perf_year === latest.perf_year &&
-      r.config_key === latest.config_key &&
-      r.aco_id !== latest.aco_id
+      r.perf_year === latest.perf_year && r.aco_id !== latest.aco_id && (
+        peerMode === 'all' ? true
+        : peerMode === 'type' ? r.aco_type === latest.aco_type
+        : peerMode === 'size' ? (latest.bene_cnt && r.bene_cnt >= latest.bene_cnt * 0.5 && r.bene_cnt <= latest.bene_cnt * 2)
+        : r.config_key === latest.config_key)
     );
-  }, [latest, records]);
+  }, [latest, records, peerMode]);
+  const peerLabel = { config: `same configuration (${latest?.config_key || ''})`, type: `same ACO type (${latest?.aco_type || ''})`,
+    size: 'similar size (half to double the beneficiaries)', all: 'all ACOs' }[peerMode];
+  const PeerPicker = () => (
+    <div className="filter-bar" style={{ marginBottom: 0, gap: 6 }}>
+      {[['config', 'Same configuration'], ['type', 'Same ACO type'], ['size', 'Similar size'], ['all', 'All ACOs']].map(([k, l]) => (
+        <button key={k} className={`filter-pill ${peerMode === k ? 'active' : ''}`} style={{ padding: '3px 10px', fontSize: 11 }} onClick={() => setPeerMode(k)}>{l}</button>
+      ))}
+    </div>
+  );
 
   const peerAvg = (key) => {
     const vals = peerRecs.map(r => r[key]).filter(v => v != null);
@@ -663,14 +676,14 @@ export default function ACODeepDive({
                 border:`1.5px solid ${isLatest?COLORS.teal+'66':isPeer?'rgba(255,255,255,0.08)':isPos?COLORS.teal+'33':'rgba(255,255,255,0.12)'}` }}>
                 <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.5)',
                   textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:5 }}>
-                  {isPeer?'Config Peers':`PY${r.perf_year}${isLatest?' · Latest':''}`}
+                  {isPeer?'Peers':`PY${r.perf_year}${isLatest?' · Latest':''}`}
                 </div>
                 <div style={{ fontSize:22, fontWeight:800, lineHeight:1,
                   color: isPeer?'rgba(255,255,255,0.65)':isPos?COLORS.teal:COLORS.red }}>
                   {isPeer?peerRecs.length:r.sav_rate!=null?`${r.sav_rate.toFixed(2)}%`:'—'}
                 </div>
                 <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:4 }}>
-                  {isPeer?`same config PY${latest?.perf_year}`:fmtM(r.shared_savings)}
+                  {isPeer?`${{config:'same configuration',type:'same ACO type',size:'similar size',all:'all ACOs'}[peerMode]}, PY${latest?.perf_year}`:fmtM(r.shared_savings)}
                 </div>
               </div>
             );
@@ -699,20 +712,20 @@ export default function ACODeepDive({
 
           {/* KPI row */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }}>
-            <KPICard title="Latest Sav Rate"
+            <KPICard title="Latest Savings Rate" tip={TOOLTIPS.sav_rate}
               value={latest?.sav_rate!=null?`${latest.sav_rate.toFixed(2)}%`:'—'}
               color={(latest?.sav_rate||0)>0?COLORS.green:COLORS.red}
               sub={prior?.sav_rate!=null?`vs ${prior.sav_rate.toFixed(2)}% in PY${prior.perf_year}`:'First year'}/>
-            <KPICard title="Earned Savings"
+            <KPICard title="Earned Savings" tip={TOOLTIPS.shared_savings}
               value={fmtM(latest?.shared_savings)}
               sub={prior?`vs ${fmtM(prior.shared_savings)} in PY${prior.perf_year}`:''}/>
-            <KPICard title="Beneficiaries"
+            <KPICard title="Aligned Beneficiaries" tip={TOOLTIPS.bene_cnt}
               value={latest?.bene_cnt!=null?fmt.num(latest.bene_cnt):'—'}
-              sub={prior?.bene_cnt!=null?`+${fmt.num(latest.bene_cnt-prior.bene_cnt)} vs PY${prior.perf_year}`:''}/>
-            <KPICard title="Quality Score"
+              sub={prior?.bene_cnt!=null&&latest?.bene_cnt!=null?`${latest.bene_cnt>=prior.bene_cnt?'+':'-'}${fmt.num(Math.abs(latest.bene_cnt-prior.bene_cnt))} vs PY${prior.perf_year}`:''}/>
+            <KPICard title="Quality Score" tip={TOOLTIPS.qual_scr}
               value={latest?.qual_scr!=null?`${latest.qual_scr.toFixed(1)}%`:'—'}
               color={latest?.qual_scr!=null&&latest.qual_scr>=75?COLORS.green:COLORS.amber}
-              sub={latest?.cisep_flag==='Yes'?'✓ CI/SEP met':latest?.perf_year===2021?'Pay-for-reporting':''}/>
+              sub={latest?.cisep_flag==='Yes'?'CI/SEP met':latest?.perf_year===2021?'Pay-for-reporting':''}/>
           </div>
 
           {/* Config context + peer comparison */}
@@ -764,10 +777,11 @@ export default function ACODeepDive({
             </div>
 
             <div className="chart-card">
-              <div className="chart-title">Peer Comparison vs {latest?.config_key} ACOs (PY{latest?.perf_year})</div>
-              <div style={{ fontSize:11, color:'var(--gray-500)', marginBottom:12 }}>
-                {peerRecs.length} peers in same configuration
+              <div className="chart-title">Peer Comparison (PY{latest?.perf_year})</div>
+              <div style={{ fontSize:11, color:'var(--gray-500)', marginBottom:8 }}>
+                {peerRecs.length} peers: {peerLabel}
               </div>
+              <div style={{ marginBottom:10 }}><PeerPicker /></div>
               {[
                 { label:'Savings Rate',     val:latest?.sav_rate,     peerKey:'sav_rate',     fmt_:v=>`${v.toFixed(2)}%`,  lowerBetter:false },
                 { label:'Avg Expense PBPM', val:latest?.bene_cnt&&latest?.tot_cost_care?latest.tot_cost_care/latest.bene_cnt/(MONTHS[latest.perf_year]||12):null,
@@ -1109,7 +1123,7 @@ export default function ACODeepDive({
           <div className="chart-card">
             <div className="chart-title">CAHPS Patient Experience Measures</div>
             <div className="chart-subtitle">
-              Summary survey measures, PY 2022 onward. 0 to 100 scale, higher is better. Vertical bar = peer average for the same configuration in PY {latest?.perf_year}.
+              Summary survey measures, PY 2022 onward. 0 to 100 scale, higher is better. Vertical bar = peer average ({peerLabel}) in PY {latest?.perf_year}.
             </div>
             {(() => {
               const hasData = acoRecords.some(r => r.ssm_taci != null || r.ssm_com != null);
@@ -1232,7 +1246,8 @@ export default function ACODeepDive({
         <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
           <div className="chart-card">
             <div className="chart-title">Utilization Trends vs Peer Average</div>
-            <div className="chart-subtitle">Per 1,000 beneficiaries · peer average = same config_key, same PY</div>
+            <div className="chart-subtitle">Per 1,000 beneficiaries. Peer average: {peerLabel}, PY {latest?.perf_year}.</div>
+            <div style={{ marginTop:8 }}><PeerPicker /></div>
             <div style={{ overflowX:'auto', marginTop:12 }}>
               <table className="data-table" style={{ minWidth:600 }}>
                 <thead>
@@ -1341,6 +1356,24 @@ export default function ACODeepDive({
                 </LineChart>
               </ResponsiveContainer>
             </div>
+          </div>
+          <div className="chart-card">
+            <div className="chart-title">E&amp;M Visits by Provider Type vs Peers (PY{latest?.perf_year})</div>
+            <div className="chart-subtitle">Visits per 1,000 beneficiaries. Peer average: {peerLabel}.</div>
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={[
+                  ['PCP E&M', 'p_em_pcp_vis'], ['Specialist E&M', 'p_em_sp_vis'], ['Nurse visits', 'p_nurse_vis'], ['FQHC and RHC visits', 'p_fqhc_rhc_vis'],
+                ].map(([label, k]) => ({ label, aco: latest?.[k] ?? null, peer: peerAvg(k) }))}
+                margin={{top:8,right:12,left:0,bottom:0}}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)" vertical={false}/>
+                <XAxis dataKey="label" tick={{fontSize:11}}/>
+                <YAxis tick={{fontSize:11}} width={50}/>
+                <Tooltip formatter={(v,n)=>[v==null?'—':`${Number(v).toFixed(0)} /1K`,n]}/>
+                <Legend wrapperStyle={{fontSize:11}}/>
+                <Bar dataKey="aco" name="This ACO" fill={COLORS.teal} radius={[3,3,0,0]}/>
+                <Bar dataKey="peer" name="Peer average" fill={COLORS.slate} radius={[3,3,0,0]}/>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
       )}
@@ -1549,7 +1582,7 @@ export default function ACODeepDive({
                   borderBottom:'1px solid var(--gray-100)' }}>
                   <span style={{ fontSize:12, color:'var(--gray-600)' }}>{row.label}</span>
                   <strong style={{ fontSize:13, color:'var(--navy)' }}>
-                    {latest?.[row.key]!=null ? fmt.num(latest[row.key]) : '—'}
+                    {latest?.[row.key]!=null ? fmt.num(latest[row.key]) : <span style={{fontSize:11,fontWeight:400,color:'var(--gray-400)'}}>not reported</span>}
                   </strong>
                 </div>
               ))}
@@ -1570,10 +1603,52 @@ export default function ACODeepDive({
                   borderBottom:'1px solid var(--gray-100)' }}>
                   <span style={{ fontSize:12, color:'var(--gray-600)' }}>{row.label}</span>
                   <strong style={{ fontSize:13, color:'var(--navy)' }}>
-                    {latest?.[row.key]!=null ? fmt.num(latest[row.key]) : '—'}
+                    {latest?.[row.key]!=null ? fmt.num(latest[row.key]) : <span style={{fontSize:11,fontWeight:400,color:'var(--gray-400)'}}>not reported</span>}
                   </strong>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Provider composition over time and per 1,000 beneficiaries vs peers */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+            <div className="chart-card">
+              <div className="chart-title">Provider Composition Over Time</div>
+              <div className="chart-subtitle">Clinicians on the ACO's participant list, by type. CMS leaves some counts unreported (shown as a missing segment).</div>
+              <ResponsiveContainer width="100%" height={230}>
+                <BarChart data={acoRecords.map(r=>({year:`PY${r.perf_year}`, pcp:r.n_pcp, spec:r.n_spec, np:r.n_np, pa:r.n_pa}))} margin={{top:8,right:12,left:0,bottom:0}}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)" vertical={false}/>
+                  <XAxis dataKey="year" tick={{fontSize:11}}/>
+                  <YAxis tick={{fontSize:11}} width={44}/>
+                  <Tooltip formatter={(v,n)=>[v==null?'—':fmt.num(v),n]}/>
+                  <Legend wrapperStyle={{fontSize:11}}/>
+                  <Bar dataKey="pcp" name="PCPs" stackId="p" fill={COLORS.teal}/>
+                  <Bar dataKey="spec" name="Specialists" stackId="p" fill={COLORS.blue}/>
+                  <Bar dataKey="np" name="Nurse practitioners" stackId="p" fill={COLORS.green}/>
+                  <Bar dataKey="pa" name="Physician assistants" stackId="p" fill={COLORS.gold} radius={[3,3,0,0]}/>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="chart-card">
+              <div className="chart-title">Clinicians per 1,000 Beneficiaries vs Peers (PY{latest?.perf_year})</div>
+              <div className="chart-subtitle">Peer median: {peerLabel}. The median is used because a few ACOs with very large networks would skew an average.{['n_pcp','n_spec','n_np','n_pa'].some(k=>latest?.[k]==null) ? ' Types with no bar for this ACO are not reported by CMS.' : ''}</div>
+              <div style={{ marginBottom:6 }}><PeerPicker /></div>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={[['PCPs','n_pcp'],['Specialists','n_spec'],['Nurse practitioners','n_np'],['Physician assistants','n_pa']].map(([label,k])=>{
+                    const per = r => r && r[k]!=null && r.bene_cnt ? r[k]/r.bene_cnt*1000 : null;
+                    const pv = peerRecs.map(per).filter(v=>v!=null).sort((a,b)=>a-b);
+                    const med = pv.length ? (pv.length%2 ? pv[(pv.length-1)/2] : (pv[pv.length/2-1]+pv[pv.length/2])/2) : null;
+                    return { label, aco: per(latest), peer: med };
+                  })} margin={{top:8,right:12,left:0,bottom:0}}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)" vertical={false}/>
+                  <XAxis dataKey="label" tick={{fontSize:11}}/>
+                  <YAxis tick={{fontSize:11}} width={40}/>
+                  <Tooltip formatter={(v,n)=>[v==null?'—':Number(v).toFixed(2),n]}/>
+                  <Legend wrapperStyle={{fontSize:11}}/>
+                  <Bar dataKey="aco" name="This ACO" fill={COLORS.teal} radius={[3,3,0,0]}/>
+                  <Bar dataKey="peer" name="Peer median" fill={COLORS.slate} radius={[3,3,0,0]}/>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
