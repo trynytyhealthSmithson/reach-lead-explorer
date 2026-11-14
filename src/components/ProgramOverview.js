@@ -80,13 +80,13 @@ const ECATS = [
 const ECOLS = [COLORS.blue,COLORS.navy,COLORS.teal,COLORS.amber,COLORS.green,COLORS.coral,COLORS.gray,COLORS.purple];
 
 const TREEMAP_COLORS = {
-  'Global|TCC':              '#1D6B3E',
-  'Global|PCC+ePCC+APO':     '#2e9478',
-  'Global|PCC+ePCC':         '#42BA97',
-  'Global|PCC':              '#8bd5c0',
-  'Professional|PCC+ePCC+APO':'#335B74',
-  'Professional|PCC+ePCC':   '#4a7a94',
-  'Professional|PCC':        '#7aaabe',
+  'Global|TCC':              '#0B1829',
+  'Global|PCC+ePCC+APO':     '#178a84',
+  'Global|PCC+ePCC':         '#20B2AA',
+  'Global|PCC':              '#9fd8d5',
+  'Professional|PCC+ePCC+APO':'#4a6fa5',
+  'Professional|PCC+ePCC':   '#6f8fbf',
+  'Professional|PCC':        '#a9bddb',
 };
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -171,11 +171,11 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
   // Savings distribution buckets
   const savBuckets = useMemo(() => [
     {label:'< -10%', min:-Infinity, max:-10, pos:false},
-    {label:'-10–-5%',min:-10,       max:-5,  pos:false},
-    {label:'-5–0%',  min:-5,        max:0,   pos:false},
-    {label:'0–5%',   min:0,         max:5,   pos:true},
-    {label:'5–10%',  min:5,         max:10,  pos:true},
-    {label:'10–15%', min:10,        max:15,  pos:true},
+    {label:'-10 to -5%',min:-10,       max:-5,  pos:false},
+    {label:'-5 to 0%',  min:-5,        max:0,   pos:false},
+    {label:'0 to 5%',   min:0,         max:5,   pos:true},
+    {label:'5 to 10%',  min:5,         max:10,  pos:true},
+    {label:'10 to 15%', min:10,        max:15,  pos:true},
     {label:'>15%',   min:15,        max:Infinity, pos:true},
   ].map(b => ({
     label: b.label, pos: b.pos,
@@ -310,7 +310,7 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
     <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
 
       {/* Context banner */}
-      <div className="lead-banner">
+      <div className="hero-banner">
         <h2>ACO REACH Model: {yearSpan}</h2>
         <p>
           The ACO REACH Model (Global and Professional Direct Contracting through PY 2022) pays participating
@@ -961,10 +961,10 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
               })}
               <div style={{display:'flex',gap:12,flexWrap:'wrap',marginTop:8}}>
                 {[
-                  {label:'TCC = Total Care Capitation',    color:'#1D6B3E'},
-                  {label:'PCC = Primary Care Capitation',  color:'#42BA97'},
-                  {label:'ePCC = Enhanced PCC election',   color:'#4a7a94'},
-                  {label:'APO = Advanced Payment Option',    color:'#335B74'},
+                  {label:'TCC = Total Care Capitation',    color:'#0B1829'},
+                  {label:'PCC = Primary Care Capitation',  color:'#20B2AA'},
+                  {label:'ePCC = Enhanced PCC election',   color:'#6f8fbf'},
+                  {label:'APO = Advanced Payment Option',    color:'#4a6fa5'},
                 ].map(l => (
                   <div key={l.label} style={{display:'flex',alignItems:'center',gap:5,fontSize:10,color:'var(--gray-600)'}}>
                     <div style={{width:10,height:10,borderRadius:2,background:l.color,flexShrink:0}}/>

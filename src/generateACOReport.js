@@ -3,14 +3,14 @@
 // Called from ACODeepDive when user clicks "Export Executive Report"
 
 // ── Brand colors (no # prefix - pptxgenjs requirement) ────────────────────
-const NAVY    = "0D1F2D";
-const NAVY2   = "1A3A52";
-const TEAL    = "42BA97";
+const NAVY    = "0B1829";
+const NAVY2   = "112240";
+const TEAL    = "20B2AA";
 const WHITE   = "FFFFFF";
-const SLATE   = "94A3B8";
+const SLATE   = "8892A4";
 const SLATE_L = "CBD5E1";
 const GRAY_50 = "F8FAFC";
-const RED     = "C53030";
+const RED     = "B4471F";
 
 const makeShadow = () => ({ type:"outer", blur:8, offset:3, angle:135, color:"000000", opacity:0.12 });
 
@@ -146,7 +146,7 @@ export async function generateACOReport(aco, acoRecords, allRecords, onProgress)
   s2.addText("SAVINGS RATE TRAJECTORY", {
     x:0.35, y:0.1, w:9, h:0.25,
     fontSize:10, bold:true, color:TEAL, fontFace:"Calibri", charSpacing:1.5, margin:0 });
-  s2.addText(`${aco.aco_name} — ${acoRecords.length}-Year Performance vs. Program & Peers`, {
+  s2.addText(`${aco.aco_name}: ${acoRecords.length}-Year Performance vs. Program and Peers`, {
     x:0.35, y:0.4, w:9, h:0.48,
     fontSize:18, bold:true, color:WHITE, fontFace:"Calibri", margin:0 });
 
@@ -179,7 +179,7 @@ export async function generateACOReport(aco, acoRecords, allRecords, onProgress)
   // Peer comparison bar
   s2.addShape(pres.shapes.RECTANGLE, { x:0.35, y:3.2, w:9.3, h:1.9,
     fill:{ color:WHITE }, shadow:makeShadow(), line:{ color:"E2E8F0", width:0.5 } });
-  s2.addText(`PY${latest?.perf_year} Peer Comparison — ${latest?.config_key} Configuration (${peerRecs.length} peers)`, {
+  s2.addText(`PY${latest?.perf_year} Peer Comparison: ${latest?.config_key} Configuration (${peerRecs.length} peers)`, {
     x:0.55, y:3.28, w:9, h:0.25,
     fontSize:11, bold:true, color:NAVY2, fontFace:"Calibri", margin:0 });
 
@@ -228,7 +228,7 @@ export async function generateACOReport(aco, acoRecords, allRecords, onProgress)
   s3.addText("QUALITY & CLINICAL PROFILE", {
     x:0.35, y:0.1, w:9, h:0.25,
     fontSize:10, bold:true, color:TEAL, fontFace:"Calibri", charSpacing:1.5, margin:0 });
-  s3.addText(`${aco.aco_name} — PY${latest?.perf_year} Quality Performance`, {
+  s3.addText(`${aco.aco_name}: PY${latest?.perf_year} Quality Performance`, {
     x:0.35, y:0.4, w:9, h:0.48,
     fontSize:18, bold:true, color:WHITE, fontFace:"Calibri", margin:0 });
 
@@ -261,7 +261,7 @@ export async function generateACOReport(aco, acoRecords, allRecords, onProgress)
   // Quality trend table
   s3.addShape(pres.shapes.RECTANGLE, { x:0.35, y:2.6, w:9.3, h:2.55,
     fill:{ color:WHITE }, shadow:makeShadow(), line:{ color:"E2E8F0", width:0.5 } });
-  s3.addText("Quality Measures — Trend & Peer Comparison", {
+  s3.addText("Quality Measures: Trend and Peer Comparison", {
     x:0.55, y:2.68, w:9, h:0.25,
     fontSize:11, bold:true, color:NAVY2, fontFace:"Calibri", margin:0 });
 

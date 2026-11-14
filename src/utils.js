@@ -24,29 +24,29 @@ export const fmt = {
 };
 
 export const COLORS = {
-  navy:    '#1a3a52',
-  teal:    '#42BA97',
-  blue:    '#335B74',
-  green:   '#2e7d4f',
-  red:     '#c0392b',
+  navy:    '#112240',
+  teal:    '#20B2AA',
+  blue:    '#4a6fa5',
+  green:   '#178a84',
+  red:     '#b4471f',
   amber:   '#d4860a',
-  gold:    '#ddaa66',
-  purple:  '#6b4ca8',
+  gold:    '#c99a3b',
+  purple:  '#1a3a5c',
   coral:   '#e07b54',
-  gray:    '#adb5bd',
-  slate:   '#5a7a94',
+  gray:    '#c8d0db',
+  slate:   '#8892a4',
 };
 
 export const TYPE_COLORS = {
-  'Standard':    '#335B74',
-  'New Entrant': '#42BA97',
+  'Standard':    '#4a6fa5',
+  'New Entrant': '#20B2AA',
   'High Needs':  '#d4860a',
 };
 
 export const CONFIG_COLORS = {
-  'Global/TCC':        '#2e7d4f',  // best performer — green
-  'Global/PCC':        '#42BA97',  // solid — teal
-  'Professional/PCC':  '#335B74',  // lowest — blue
+  'Global/TCC':        '#178a84',  // best performer — green
+  'Global/PCC':        '#20B2AA',  // solid — teal
+  'Professional/PCC':  '#4a6fa5',  // lowest — blue
 };
 
 export const CONFIG_LABELS = {

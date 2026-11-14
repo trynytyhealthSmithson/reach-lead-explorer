@@ -412,7 +412,7 @@ export default function ACODeepDive({
       setReportStatus(null);
     } catch (err) {
       console.error('Report generation failed:', err);
-      setReportStatus('Error — please try again');
+      setReportStatus('Error, please try again');
       setTimeout(() => setReportStatus(null), 3000);
     }
   };
@@ -504,10 +504,10 @@ export default function ACODeepDive({
           <div className="chart-title" style={{ marginBottom:16 }}>Search for an ACO</div>
           <ACOSearch onSelect={(a) => { setSelectedACO(a); setActiveTab('overview'); }} />
           {pinnedACO && (
-            <div style={{ marginTop:14, padding:'12px 14px', background:'rgba(221,170,102,0.12)',
-              borderRadius:'var(--radius)', border:'1px solid rgba(221,170,102,0.3)' }}>
+            <div style={{ marginTop:14, padding:'12px 14px', background:'rgba(201,154,59,0.12)',
+              borderRadius:'var(--radius)', border:'1px solid rgba(201,154,59,0.3)' }}>
               <div style={{ fontSize:10, fontWeight:700, color:'var(--gold)', textTransform:'uppercase',
-                letterSpacing:'0.08em', marginBottom:4 }}>📌 Pinned ACO</div>
+                letterSpacing:'0.08em', marginBottom:4 }}>Pinned ACO</div>
               <div style={{ fontWeight:600, color:'var(--navy)', marginBottom:6 }}>{pinnedACO.aco_name}</div>
               <button onClick={() => { setSelectedACO(pinnedACO); setActiveTab('overview'); }}
                 style={{ padding:'5px 14px', borderRadius:'var(--radius)', fontSize:12,
@@ -576,7 +576,7 @@ export default function ACODeepDive({
                   </span>
                   {latest.enhanced_pcc==='Yes' && (
                     <span style={{ fontSize:10, padding:'2px 8px', borderRadius:12, fontWeight:600,
-                      background:'rgba(46,148,120,0.3)', color:COLORS.teal }}>ePCC</span>
+                      background:'rgba(23,138,132,0.3)', color:COLORS.teal }}>ePCC</span>
                   )}
                   {latest.stop_loss==='Yes' && (
                     <span style={{ fontSize:10, padding:'2px 8px', borderRadius:12, fontWeight:600,
@@ -584,7 +584,7 @@ export default function ACODeepDive({
                   )}
                   {latest.hpp_flag==='Yes' && (
                     <span style={{ fontSize:10, padding:'2px 8px', borderRadius:12, fontWeight:700,
-                      background:`${COLORS.gold}33`, color:COLORS.gold }}>🏆 HPP</span>
+                      background:`${COLORS.gold}33`, color:COLORS.gold }}>HPP</span>
                   )}
                   {latest.cisep_flag==='Yes' && (
                     <span style={{ fontSize:10, padding:'2px 8px', borderRadius:12, fontWeight:600,
@@ -606,7 +606,7 @@ export default function ACODeepDive({
                 style={{ padding:'6px 12px', borderRadius:'var(--radius)', fontSize:11,
                   background:`${COLORS.gold}22`, color:COLORS.gold, fontWeight:700,
                   border:`1px solid ${COLORS.gold}44`, cursor:'pointer' }}>
-                📌 Pinned
+                Pinned
               </button>
             ) : (
               <button onClick={() => pinACO && pinACO({
@@ -635,7 +635,7 @@ export default function ACODeepDive({
                 style={{ padding:'6px 12px', borderRadius:'var(--radius)', fontSize:11,
                   background:'rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.6)',
                   border:'1px solid rgba(255,255,255,0.15)', cursor:'pointer' }}>
-                📌 Pin ACO
+                Pin ACO
               </button>
             )}
             <button onClick={handleExportReport}
@@ -645,7 +645,7 @@ export default function ACODeepDive({
                 color: reportStatus ? 'rgba(255,255,255,0.5)' : 'var(--navy)',
                 border:'none', cursor: reportStatus ? 'default' : 'pointer',
                 minWidth:160, transition:'all 0.2s' }}>
-              {reportStatus || '📄 Export Report →'}
+              {reportStatus || 'Download PowerPoint'}
             </button>
           </div>
         </div>
@@ -810,7 +810,7 @@ export default function ACODeepDive({
           <div className="chart-card">
             <div className="chart-title">Benchmark vs. Actual Expense</div>
             <div className="chart-subtitle">
-              Benchmark (blue) vs Total Cost (red) — gap = gross savings. Bars = savings rate (right axis).
+              Benchmark (blue) vs Total Cost (red); the gap is gross savings. Bars = savings rate (right axis).
             </div>
             <BenchmarkModeToggle acoRecords={acoRecords} />
           </div>
@@ -934,8 +934,8 @@ export default function ACODeepDive({
                           </React.Fragment>
                         );
                       }
-                      const note = r.tier==='volume'?'Volume only — no spend field'
-                                 : r.tier==='spend' ?'Spend trend — no util rate'
+                      const note = r.tier==='volume'?'Volume only: no spend field'
+                                 : r.tier==='spend' ?'Spend trend: no utilization rate'
                                  : r.tier==='metric'?'Metric (not $ component)'
                                  : r.tier==='mix'   ?'Mix sub-type':'';
                       return (
@@ -1365,7 +1365,7 @@ export default function ACODeepDive({
                 <div style={{fontSize:10,fontWeight:700,
                   color:latest?.apo_election==='Yes'?COLORS.teal:'var(--gray-500)',
                   textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:8}}>
-                  APO — Advanced Payment Option
+                  APO: Advanced Payment Option
                 </div>
                 <div style={{fontSize:22,fontWeight:800,
                   color:latest?.apo_election==='Yes'?COLORS.teal:COLORS.gray,marginBottom:4}}>
@@ -1452,8 +1452,8 @@ export default function ACODeepDive({
                   textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Age Distribution</div>
                 {[
                   {label:'Under 65',  key:'n_ben_age_0_64'},
-                  {label:'65–74',     key:'n_ben_age_65_74'},
-                  {label:'75–84',     key:'n_ben_age_75_84'},
+                  {label:'65 to 74',     key:'n_ben_age_65_74'},
+                  {label:'75 to 84',     key:'n_ben_age_75_84'},
                   {label:'85+',       key:'n_ben_age_85plus'},
                 ].map(row => {
                   const val = latest?.[row.key];
@@ -1582,7 +1582,7 @@ export default function ACODeepDive({
             <div className="chart-title">ACO Program Elections</div>
             <div className="chart-subtitle">
               Operational elections made by this ACO. Note: The REACH PUF does not report
-              voluntary vs. claims-based beneficiary alignment counts — that breakdown is not
+              voluntary vs. claims-based beneficiary alignment counts; that breakdown is not
               available at the ACO level in public data.
             </div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginTop:14}}>
