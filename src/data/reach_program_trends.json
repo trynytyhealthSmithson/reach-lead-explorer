@@ -54,7 +54,7 @@
     "cms_basis_gross_M": 119.0,
     "cms_basis_gross_rate": 3.3,
     "cms_basis_medicare_M": 70.4,
-    "cms_basis_gross_pbpm": 37.03,
+    "cms_basis_gross_pbpm": 37.02,
     "heba_up_total": null,
     "heba_dn_total": null
   },
@@ -110,10 +110,10 @@
       }
     },
     "cms_basis_benchmark_M": 23653.0,
-    "cms_basis_gross_M": 818.6,
-    "cms_basis_gross_rate": 3.46,
-    "cms_basis_medicare_M": 311.1,
-    "cms_basis_gross_pbpm": 37.3,
+    "cms_basis_gross_M": 878.4,
+    "cms_basis_gross_rate": 3.71,
+    "cms_basis_medicare_M": 370.9,
+    "cms_basis_gross_pbpm": 40.02,
     "heba_up_total": null,
     "heba_dn_total": null
   },
@@ -169,10 +169,10 @@
       }
     },
     "cms_basis_benchmark_M": 28209.2,
-    "cms_basis_gross_M": 1616.4,
-    "cms_basis_gross_rate": 5.73,
-    "cms_basis_medicare_M": 693.1,
-    "cms_basis_gross_pbpm": 65.84,
+    "cms_basis_gross_M": 1662.6,
+    "cms_basis_gross_rate": 5.89,
+    "cms_basis_medicare_M": 739.4,
+    "cms_basis_gross_pbpm": 67.72,
     "heba_up_total": 70.4,
     "heba_dn_total": -69.7
   },
@@ -228,10 +228,10 @@
       }
     },
     "cms_basis_benchmark_M": 37476.5,
-    "cms_basis_gross_M": 2372.7,
-    "cms_basis_gross_rate": 6.33,
-    "cms_basis_medicare_M": 917.8,
-    "cms_basis_gross_pbpm": 78.75,
+    "cms_basis_gross_M": 2527.1,
+    "cms_basis_gross_rate": 6.74,
+    "cms_basis_medicare_M": 1072.3,
+    "cms_basis_gross_pbpm": 83.88,
     "heba_up_total": 172.5,
     "heba_dn_total": -84.9
   }

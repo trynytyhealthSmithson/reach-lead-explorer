@@ -1,0 +1,18 @@
+{
+  "join_key": "participant legal business name as reported by CMS (par_lbn), upper case and collapsed whitespace only",
+  "reach_participant_rows": 277857,
+  "reach_participant_rows_org_named_pct": 2.5,
+  "reach_org_named_participant_organizations": 2874,
+  "mssp_org_named_participant_organizations": 19724,
+  "participant_organizations_in_both_programs": 934,
+  "ambiguous_names_excluded": 6,
+  "in_mssp_before_reach": 819,
+  "in_reach_before_mssp": 115,
+  "check_same_year_participant_matches_org_named": 5,
+  "check_same_year_collisions_if_person_names_were_used": 248,
+  "preferred_provider_organizations_also_mssp_same_year": 160,
+  "reach_acos_with_org_participants": 118,
+  "reach_acos_with_any_org_participant_from_mssp": 81,
+  "reach_acos_25pct_or_more_org_participants_from_mssp": 54,
+  "reach_acos_50pct_or_more_org_participants_from_mssp": 26
+}
