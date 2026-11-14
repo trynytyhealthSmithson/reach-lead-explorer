@@ -1,20 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import ProgramOverview from './components/ProgramOverview';
 import ACODeepDive from './components/ACODeepDive';
+import CohortExplorer from './components/CohortExplorer';
+import QualityDashboard from './components/QualityDashboard';
+import SavingsBridge from './components/SavingsBridge';
 import ProgramChanges from './components/ProgramChanges';
 import Glossary from './components/Glossary';
 import acoList from './data/reach_aco_list.json';
 
 const NAV = [
   { id: 'overview', label: 'Program Overview', section: 'Analysis' },
+  { id: 'cohort',   label: 'Cohort Explorer',  section: 'Analysis' },
   { id: 'aco',      label: 'ACO Deep Dive',    section: 'Analysis' },
+  { id: 'bridge',   label: 'Savings Bridge',   section: 'Analysis' },
+  { id: 'quality',  label: 'Quality Dashboard', section: 'Analysis' },
   { id: 'changes',  label: 'Program Changes',  section: 'Reference' },
   { id: 'glossary', label: 'Glossary & Terms', section: 'Reference' },
 ];
 const PAGE_TITLES = Object.fromEntries(NAV.map(n => [n.id, n.label]));
 const ACO_BY_ID = Object.fromEntries(acoList.map(a => [a.aco_id, a]));
 
-// Hash routes: #overview, #aco, #aco/D0116, #changes, #glossary
+// Hash routes: #overview, #cohort, #aco, #aco/D0116, #changes, #glossary
 function parseHash() {
   const h = (window.location.hash || '').replace(/^#\/?/, '');
   const [page, id] = h.split('/');
@@ -164,11 +170,14 @@ export default function App() {
           ) : (
             <>
               {page === 'overview' && <ProgramOverview perfData={perfData} navigateToACO={navigateToACO} pinnedACO={pinnedACO} />}
+              {page === 'cohort' && <CohortExplorer perfData={perfData} navigateToACO={navigateToACO} pinnedACO={pinnedACO} pinACO={pinACO} />}
               {page === 'aco' && (
                 <ACODeepDive perfData={perfData} initialACO={deepDiveACO}
                   initialVersion={deepDiveVersion} pinnedACO={pinnedACO}
                   pinACO={pinACO} unpinACO={unpinACO} />
               )}
+              {page === 'bridge' && <SavingsBridge perfData={perfData} navigateToACO={navigateToACO} pinnedACO={pinnedACO} />}
+              {page === 'quality' && <QualityDashboard perfData={perfData} navigateToACO={navigateToACO} pinnedACO={pinnedACO} />}
               {page === 'changes'  && <ProgramChanges />}
               {page === 'glossary' && <Glossary />}
             </>

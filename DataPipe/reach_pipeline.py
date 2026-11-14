@@ -171,10 +171,13 @@ def build_trends(recs, years):
                 'total_benes': int(sum(r['bene_cnt'] or 0 for r in g)),
             }
         # CMS reports program results against the benchmark before the Global discount
-        # (gross savings = net savings to CMS + net savings to ACOs). Rebuild that basis from the PUF.
+        # (gross savings = net savings to CMS + net savings to ACOs). Rebuild that basis from the PUF:
+        # benchmark before discount, plus the population adjustment, minus cost after stop-loss.
         bench_pre = sum((r['final_benchmark'] or 0) / (1 - (r['discount'] or 0) / 100)
                         + (r['heba_up_amt'] or 0) + (r['heba_down_amt'] or 0) for r in yr)
-        gross_cms = bench_pre - cost
+        # CMS defines gross savings against total cost of care after stop-loss (TOT_COST_CARE_NET).
+        cost_net = sum(r['tot_cost_care_net'] or 0 for r in yr)
+        gross_cms = bench_pre - cost_net
         heba_up = [r['heba_up_amt'] for r in yr if r['heba_up_amt'] is not None]
         heba_dn = [r['heba_down_amt'] for r in yr if r['heba_down_amt'] is not None]
         out.append({

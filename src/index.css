@@ -677,3 +677,5 @@ button {
   .kpi-grid { grid-template-columns: 1fr 1fr; }
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
 }
+.cohort-table td, .cohort-table th { white-space: nowrap; }
+.cohort-table td:nth-child(2) { white-space: normal; min-width: 240px; }

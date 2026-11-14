@@ -413,7 +413,7 @@ export default function ProgramOverview({ perfData, navigateToACO }) {
           </table>
         </div>
         <div style={{marginTop:8,fontSize:11,color:'var(--gray-500)',lineHeight:1.6}}>
-          This tool: gross savings = Σ (final benchmark ÷ (1 − discount) + equity adjustment) − Σ total cost of care;
+          This tool: gross savings = Σ (final benchmark ÷ (1 − discount) + population adjustment) − Σ total cost of care after stop-loss, matching CMS's definition of gross savings;
           net to ACOs = Σ shared savings; net to Medicare = the difference. CMS figures: ACO REACH PY 2023 and PY 2024
           Financial and Quality Results fact sheets; PY 2021 and PY 2022 Medicare savings as reported in the PY 2024 results summary.
           The ACO-level savings rates elsewhere in this tool are CMS's published SAV_RATE field, measured against the final

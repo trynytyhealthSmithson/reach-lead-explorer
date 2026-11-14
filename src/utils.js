@@ -87,3 +87,49 @@ export const YEAR_NARRATIVES = {
   2024: 'The fourth performance year, with 115 ACOs and about 2.5 million aligned beneficiaries. 49 ACOs qualified for the High Performers Pool, up from 24. In the PY 2024 file, CMS publishes the benchmark equity adjustment as the Population Adjustment and the quality data adjustment as the Data Reporting adjustment, and adds a CAHPS composite score.',
   2023: 'The first year as ACO REACH, with 132 ACOs and about 2 million aligned beneficiaries. Quality moved to pay-for-performance, and the average quality score fell from 99% to 79%. The Health Equity Benchmark Adjustment (HEBA) and the High Performers Pool began; 24 ACOs qualified for the pool.',
 };
+
+// Download the chart inside a card as a 2x PNG (shared with the MSSP Explorer)
+export function exportChartPNG(cardEl, filename = 'chart') {
+  if (!cardEl) return;
+  const svg = cardEl.querySelector('svg.recharts-surface, svg');
+  if (!svg) { alert('No chart found to export.'); return; }
+
+  // Clone and add white background
+  const clone = svg.cloneNode(true);
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  bg.setAttribute('width', '100%'); bg.setAttribute('height', '100%');
+  bg.setAttribute('fill', 'white');
+  clone.insertBefore(bg, clone.firstChild);
+
+  const svgStr = new XMLSerializer().serializeToString(clone);
+  const blob   = new Blob([svgStr], { type: 'image/svg+xml' });
+  const url    = URL.createObjectURL(blob);
+
+  // Draw onto canvas for PNG
+  const img = new Image();
+  img.onload = () => {
+    const w = svg.clientWidth  || parseInt(svg.getAttribute('width'))  || 800;
+    const h = svg.clientHeight || parseInt(svg.getAttribute('height')) || 400;
+    const canvas = document.createElement('canvas');
+    canvas.width  = w * 2; canvas.height = h * 2; // 2x for retina
+    const ctx = canvas.getContext('2d');
+    ctx.scale(2, 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    URL.revokeObjectURL(url);
+    const link = document.createElement('a');
+    link.download = `${filename}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  };
+  img.src = url;
+}
+
+// Months in each performance year (PY 2021 started April 1)
+export const PY_MONTHS = { 2021: 9 };
+export const monthsFor = (y) => PY_MONTHS[y] || 12;
+export const expensePBPM = (r) => (r && r.tot_cost_care != null && r.bene_cnt)
+  ? r.tot_cost_care / (r.bene_cnt * monthsFor(r.perf_year)) : null;
+export const sharedPerBene = (r) => (r && r.shared_savings != null && r.bene_cnt) ? r.shared_savings / r.bene_cnt : null;
