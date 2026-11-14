@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import ProgramOverview from './components/ProgramOverview';
 import ACODeepDive from './components/ACODeepDive';
-import LEADTransition from './components/LEADTransition';
 import ProgramChanges from './components/ProgramChanges';
 import Glossary from './components/Glossary';
 
 const NAV = [
   { id: 'overview', label: 'Program Overview', icon: '📈', section: 'Analysis' },
   { id: 'aco',      label: 'ACO Deep Dive',   icon: '🏥', section: 'Analysis' },
-  { id: 'lead',     label: 'LEAD Transition',  icon: '🚀', section: 'Analysis' },
   { id: 'changes',  label: 'Program Changes',  icon: '📋', section: 'Reference' },
   { id: 'glossary', label: 'Glossary & Terms', icon: '📖', section: 'Reference' },
 ];
@@ -16,7 +14,6 @@ const NAV = [
 const PAGE_TITLES = {
   overview: 'Program Overview',
   aco:      'ACO Deep Dive',
-  lead:     'LEAD Model Transition',
   changes:  'Program Changes',
   glossary: 'Glossary & Terms',
 };
@@ -45,10 +42,10 @@ export default function App() {
   const pinACO = (aco) => setPinnedACO(aco);
   const unpinACO = () => setPinnedACO(null);
 
-  const goToLEAD = () => setPage('lead');
-
   const sections = [...new Set(NAV.map(n => n.section))];
-  const totalACOYears = perfData?.total || 284;
+  const totalACOYears = perfData?.total || 0;
+  const years = perfData?.years || [];
+  const yearSpan = years.length ? `PY ${years[0]} to ${years[years.length - 1]}` : '';
 
   return (
     <div className="app-layout">
@@ -60,7 +57,7 @@ export default function App() {
             <span style={{ color: '#0070C0' }}>:enablement</span>
           </div>
           <div className="sidebar-brand-sub" style={{ marginTop: 8 }}>
-            ACO REACH → LEAD<br />Explorer
+            ACO REACH<br />Explorer
           </div>
         </div>
 
@@ -100,12 +97,6 @@ export default function App() {
                   border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer' }}>
                 Deep Dive
               </button>
-              <button onClick={goToLEAD}
-                style={{ flex: 1, padding: '4px 0', fontSize: 10, fontWeight: 600,
-                  background: 'rgba(221,170,102,0.2)', color: 'var(--gold)', borderRadius: 4,
-                  border: '1px solid rgba(221,170,102,0.3)', cursor: 'pointer' }}>
-                LEAD →
-              </button>
               <button onClick={unpinACO}
                 style={{ padding: '4px 8px', fontSize: 10, color: 'rgba(255,255,255,0.4)',
                   background: 'none', border: 'none', cursor: 'pointer' }}>
@@ -117,10 +108,9 @@ export default function App() {
 
         <div className="sidebar-footer">
           Data: CMS ACO REACH PUF<br />
-          PY 2021 – 2023 &nbsp;|&nbsp; {totalACOYears} ACO-years
+          {yearSpan} &nbsp;|&nbsp; {totalACOYears} ACO-years
           <div style={{ marginTop: 6, fontSize: 10, color: 'rgba(255,255,255,0.3)', lineHeight: 1.5 }}>
-            Source: CMS Innovation Center<br />
-            PY 2024 data pending release
+            Source: CMS Innovation Center
           </div>
           <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
             <a href="https://mssppuf.trynytyhealth.com" target="_blank" rel="noreferrer"
@@ -144,13 +134,7 @@ export default function App() {
                 📌 {pinnedACO.aco_id}
               </span>
             )}
-            <span className="topbar-badge">PY 2021 – 2023</span>
-            <a href="https://trynytyhealth.com/post-lead-model" target="_blank" rel="noreferrer"
-              style={{ fontSize: 11, color: 'var(--teal-dark)', fontWeight: 700,
-                padding: '3px 10px', borderRadius: 20, background: 'var(--teal-light)',
-                border: '1px solid rgba(46,148,120,0.25)', textDecoration: 'none' }}>
-              LEAD deadline: May 17 →
-            </a>
+            <span className="topbar-badge">{yearSpan}</span>
           </div>
         </div>
 
@@ -168,11 +152,7 @@ export default function App() {
               {page === 'aco' && (
                 <ACODeepDive perfData={perfData} initialACO={deepDiveACO}
                   initialVersion={deepDiveVersion} pinnedACO={pinnedACO}
-                  pinACO={pinACO} unpinACO={unpinACO} goToLEAD={goToLEAD} />
-              )}
-              {page === 'lead' && (
-                <LEADTransition perfData={perfData} pinnedACO={pinnedACO}
-                  navigateToACO={navigateToACO} pinACO={pinACO} />
+                  pinACO={pinACO} unpinACO={unpinACO} />
               )}
               {page === 'changes'  && <ProgramChanges />}
               {page === 'glossary' && <Glossary />}

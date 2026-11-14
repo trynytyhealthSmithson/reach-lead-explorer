@@ -9,10 +9,8 @@ const TEAL    = "42BA97";
 const WHITE   = "FFFFFF";
 const SLATE   = "94A3B8";
 const SLATE_L = "CBD5E1";
-const GOLD    = "DDAA66";
 const GRAY_50 = "F8FAFC";
 const RED     = "C53030";
-const GREEN   = "2E7D4F";
 
 const makeShadow = () => ({ type:"outer", blur:8, offset:3, angle:135, color:"000000", opacity:0.12 });
 
@@ -55,10 +53,9 @@ export async function generateACOReport(aco, acoRecords, allRecords, onProgress)
   const PptxGenJS = await loadPptxGenJS();
   const pres = new PptxGenJS();
   pres.layout = 'LAYOUT_16x9';
-  pres.title = `ACO REACH → LEAD: ${aco.aco_name}`;
+  pres.title = `ACO REACH Performance: ${aco.aco_name}`;
 
   const latest = acoRecords[acoRecords.length - 1];
-  const prior  = acoRecords[acoRecords.length - 2];
 
   // Peer records: same config_key, same latest perf year, different ACO
   const peerRecs = allRecords.filter(r =>
@@ -67,7 +64,6 @@ export async function generateACOReport(aco, acoRecords, allRecords, onProgress)
     r.aco_id !== latest?.aco_id
   );
 
-  const savPct = peerPct => peerPct != null ? `${peerPct}th pct` : '';
   const peerAvgSav = calcPeerAvg(peerRecs, 'sav_rate');
   const savRatePct = calcPeerPct(peerRecs, 'sav_rate', latest?.sav_rate);
 
@@ -79,18 +75,13 @@ export async function generateACOReport(aco, acoRecords, allRecords, onProgress)
 
   s1.addShape(pres.shapes.RECTANGLE, { x:0, y:0, w:0.08, h:5.625, fill:{ color:TEAL } });
 
-  // Deadline badge
-  s1.addShape(pres.shapes.RECTANGLE, { x:7.1, y:0.28, w:2.6, h:0.42,
-    fill:{ color:GOLD }, line:{ color:GOLD } });
-  s1.addText("LEAD Deadline: May 17, 2026", { x:7.1, y:0.28, w:2.6, h:0.42,
-    fontSize:10, bold:true, color:NAVY, fontFace:"Calibri", align:"center", margin:0 });
 
   s1.addText("TRYNYTY", { x:0.35, y:0.32, w:3, h:0.38,
     fontSize:20, bold:true, color:WHITE, fontFace:"Calibri", charSpacing:3, margin:0 });
   s1.addText("health:enablement", { x:0.35, y:0.68, w:3, h:0.22,
     fontSize:10, color:TEAL, fontFace:"Calibri", margin:0 });
 
-  s1.addText("ACO REACH → LEAD", { x:0.35, y:1.3, w:9.3, h:0.55,
+  s1.addText("ACO REACH Performance", { x:0.35, y:1.3, w:9.3, h:0.55,
     fontSize:36, bold:true, color:WHITE, fontFace:"Calibri", margin:0 });
   s1.addText("Executive Intelligence Report", { x:0.35, y:1.85, w:9.3, h:0.48,
     fontSize:30, color:TEAL, fontFace:"Calibri", italic:true, margin:0 });
@@ -246,13 +237,13 @@ export async function generateACOReport(aco, acoRecords, allRecords, onProgress)
     { label:'CI/SEP Status', value: latest?.cisep_flag||'N/A',
       active: latest?.cisep_flag==='Yes',
       note: latest?.cisep_flag==='Yes'
-        ? 'CI/SEP ACOs averaged 5.80% savings vs 1.07% for non-CI/SEP'
-        : 'CI/SEP qualification strengthens LEAD readiness' },
+        ? 'Met the Continuous Improvement / Sustained Exceptional Performance criteria'
+        : latest?.cisep_flag==='No' ? 'Did not meet the CI/SEP criteria' : 'Not assessed for this performance year' },
     { label:'HPP Qualification', value: latest?.hpp_flag||'N/A',
       active: latest?.hpp_flag==='Yes',
       note: latest?.hpp_flag==='Yes'
-        ? 'Top 18% of PY2023 ACOs. HPP ACOs earned 44% of all shared savings.'
-        : 'HPP requires CI/SEP + above HPP threshold' },
+        ? `Qualified for the High Performers Pool in PY ${latest?.perf_year}`
+        : latest?.hpp_flag==='No' ? 'Did not qualify for the High Performers Pool' : 'Not assessed for this performance year' },
   ]].flat().forEach((item, i) => {
     const cx = 0.35 + i * 4.8;
     const col = item.active ? TEAL : SLATE;
@@ -321,98 +312,12 @@ export async function generateACOReport(aco, acoRecords, allRecords, onProgress)
     }
   });
 
-  s3.addText(`Source: CMS ACO REACH PUF  |  PY2021: Pay-for-reporting (all scores = 100%)  |  PY2022: Pay-for-reporting  |  PY2023: Pay-for-performance`, {
+  s3.addText(`Source: CMS ACO REACH PUF  |  PY 2021: pay-for-reporting (all scores 100%)  |  PY 2022: mostly pay-for-reporting  |  PY 2023 onward: pay-for-performance`, {
     x:0.35, y:5.38, w:9.3, h:0.18,
     fontSize:8, color:SLATE, fontFace:"Calibri", margin:0 });
 
-  // ── SLIDE 4: LEAD Readiness Assessment ────────────────────────────────────
-  onProgress?.('Building LEAD assessment slide...');
-  const s4 = pres.addSlide();
-  s4.background = { color: NAVY };
-
-  s4.addShape(pres.shapes.RECTANGLE, { x:0, y:0, w:0.08, h:5.625, fill:{ color:TEAL } });
-
-  s4.addText("LEAD MODEL READINESS ASSESSMENT", {
-    x:0.35, y:0.2, w:9.3, h:0.25,
-    fontSize:10, bold:true, color:TEAL, fontFace:"Calibri", charSpacing:1.5, margin:0 });
-  s4.addText(`${aco.aco_name}`, {
-    x:0.35, y:0.5, w:9.3, h:0.55,
-    fontSize:26, bold:true, color:WHITE, fontFace:"Calibri", margin:0 });
-
-  // Readiness tier
-  const savRate = latest?.sav_rate || 0;
-  const hasCI = latest?.cisep_flag === 'Yes';
-  const hasHPP = latest?.hpp_flag === 'Yes';
+  const savRate    = latest?.sav_rate ?? 0;
   const yearsCount = acoRecords.length;
-
-  let tier, tierColor, tierDesc;
-  if (hasHPP || (savRate > 8 && hasCI)) {
-    tier = "LEAD Ready — Elite"; tierColor = GOLD;
-    tierDesc = "Top-tier REACH performance. Maximum LEAD readiness. Strong candidate for Global/TCC with CARA.";
-  } else if (savRate > 5 && hasCI) {
-    tier = "LEAD Ready — Strong"; tierColor = TEAL;
-    tierDesc = "Consistent savings above program average with CI/SEP. Well-positioned for LEAD transition.";
-  } else if (savRate > 0 && yearsCount >= 2) {
-    tier = "LEAD Ready — Developing"; tierColor = "5EEAD4";
-    tierDesc = "Positive savings trajectory. LEAD's 10-year structure and stable benchmark work in your favor.";
-  } else {
-    tier = "LEAD — Build Foundation"; tierColor = GOLD;
-    tierDesc = "LEAD offers a fresh start with better incentive structure. Now is the time to assess the path.";
-  }
-
-  s4.addShape(pres.shapes.RECTANGLE, { x:0.35, y:1.15, w:9.3, h:0.75,
-    fill:{ color:"0A1929" }, line:{ color:tierColor, width:1.5 } });
-  s4.addText("READINESS TIER", { x:0.55, y:1.2, w:3, h:0.22,
-    fontSize:9, bold:true, color:SLATE, fontFace:"Calibri", charSpacing:1, margin:0 });
-  s4.addText(tier, { x:0.55, y:1.42, w:6, h:0.35,
-    fontSize:20, bold:true, color:tierColor, fontFace:"Calibri", margin:0 });
-  s4.addText(tierDesc, { x:6.3, y:1.22, w:3.1, h:0.55,
-    fontSize:10, color:SLATE_L, fontFace:"Calibri", margin:0 });
-
-  // Track recommendation
-  const isGlobal = latest?.risk_arrangement === 'Global';
-  const isTCC = latest?.capitation === 'TCC';
-
-  s4.addShape(pres.shapes.RECTANGLE, { x:0.35, y:2.05, w:9.3, h:1.3,
-    fill:{ color:"0A1929" }, line:{ color:"1E3A5A", width:0.5 } });
-  s4.addText("RECOMMENDED LEAD TRACK", { x:0.55, y:2.12, w:5, h:0.22,
-    fontSize:9, bold:true, color:TEAL, fontFace:"Calibri", charSpacing:1, margin:0 });
-  s4.addText(isGlobal ? "Global Track" : "Professional Track (consider upgrading to Global)", {
-    x:0.55, y:2.37, w:9.0, h:0.35,
-    fontSize:18, bold:true, color:WHITE, fontFace:"Calibri", margin:0 });
-  s4.addText(isGlobal
-    ? `As a ${latest?.config_key} ACO, you map directly to LEAD's Global track. ${isTCC ? 'Your TCC experience positions you well for CARA episode arrangements.' : 'Consider TCC in LEAD to unlock CARA episode arrangements with specialists.'}`
-    : `Professional risk gives you a lower-risk entry point. With a ${savRate.toFixed(2)}% savings rate, upgrading to Global track in LEAD would significantly increase your earnings potential.`,
-    { x:0.55, y:2.75, w:9.0, h:0.5,
-      fontSize:11, color:SLATE_L, fontFace:"Calibri", margin:0 });
-
-  // Key factors grid
-  const factors = [
-    { l:'CARA Eligibility', v: isGlobal ? '✓ Eligible' : '✗ Global track required',
-      c: isGlobal ? TEAL : SLATE },
-    { l:'HEBA Advantage', v:'✓ All ACOs',
-      c: TEAL },
-    { l:'10-Year No-Rebase', v:'✓ Full benefit',
-      c: TEAL },
-    { l:'Concurrent Risk Adj.', v: latest?.aco_type === 'High Needs' ? '✓ Full' : '✓ HN criteria',
-      c: TEAL },
-    { l:'CI/SEP → HPP Path', v: hasCI ? '✓ Eligible' : hasHPP ? '✓ Qualified' : 'Work toward CI/SEP',
-      c: hasCI || hasHPP ? TEAL : GOLD },
-  ];
-
-  factors.forEach((f, i) => {
-    const fx = 0.35 + i * 1.88;
-    s4.addShape(pres.shapes.RECTANGLE, { x:fx, y:3.5, w:1.78, h:1.05,
-      fill:{ color:"061020" }, line:{ color:"1E3A5A", width:0.5 } });
-    s4.addText(f.l, { x:fx+0.1, y:3.57, w:1.58, h:0.28,
-      fontSize:9, bold:true, color:SLATE, fontFace:"Calibri", margin:0 });
-    s4.addText(f.v, { x:fx+0.1, y:3.88, w:1.58, h:0.42,
-      fontSize:11, bold:true, color:f.c, fontFace:"Calibri", margin:0 });
-  });
-
-  s4.addText("Application deadline: May 17, 2026  |  LEAD Model launches: January 1, 2027", {
-    x:0.35, y:5.38, w:9.3, h:0.18,
-    fontSize:8, color:"4A6080", fontFace:"Calibri", margin:0 });
 
   // ── SLIDE 5: The Ask ───────────────────────────────────────────────────────
   onProgress?.('Building final slide...');
@@ -426,14 +331,14 @@ export async function generateACOReport(aco, acoRecords, allRecords, onProgress)
   s5.addText("health:enablement", { x:0.35, y:0.68, w:4, h:0.25,
     fontSize:12, color:TEAL, fontFace:"Calibri", margin:0 });
 
-  s5.addText("What this data means for your LEAD strategy\nis exactly what we should talk about.", {
+  s5.addText("Want to go deeper on what this data\nmeans for your organization?", {
     x:0.35, y:1.15, w:5.2, h:1.1,
     fontSize:18, bold:true, color:WHITE, fontFace:"Calibri", margin:0 });
 
   s5.addText("HOW WE CAN HELP", { x:0.35, y:2.4, w:5, h:0.22,
     fontSize:9, bold:true, color:TEAL, fontFace:"Calibri", charSpacing:1.5, margin:0 });
   [
-    "LEAD application strategy & track selection",
+    "Value-based contract and model strategy",
     "Financial modeling specific to your configuration",
     "Benchmark & risk score optimization",
     "Custom analytics & performance dashboards",
@@ -451,7 +356,7 @@ export async function generateACOReport(aco, acoRecords, allRecords, onProgress)
 
   s5.addText("Ready to talk?", { x:6.0, y:0.52, w:3.45, h:0.48,
     fontSize:22, bold:true, color:WHITE, fontFace:"Calibri", margin:0 });
-  s5.addText(`Based on ${aco.aco_name}'s ${savRate.toFixed(2)}% savings rate and ${yearsCount} years of REACH experience, let's discuss what LEAD means for your organization.`, {
+  s5.addText(`Based on ${aco.aco_name}'s ${savRate.toFixed(2)}% savings rate across ${yearsCount} year${yearsCount===1?'':'s'} of REACH participation, let's talk through what is driving performance and where the next gains are.`, {
     x:6.0, y:1.08, w:3.45, h:1.0,
     fontSize:11, color:SLATE_L, fontFace:"Calibri", margin:0 });
 
@@ -469,7 +374,7 @@ export async function generateACOReport(aco, acoRecords, allRecords, onProgress)
     fontSize:11, color:SLATE, fontFace:"Calibri", margin:0 });
   s5.addShape(pres.shapes.RECTANGLE, { x:6.0, y:3.72, w:3.45, h:0.48,
     fill:{ color:"1E3A5A" }, line:{ color:TEAL, width:0.5 } });
-  s5.addText("ACO REACH → LEAD Explorer →", { x:6.0, y:3.72, w:3.45, h:0.48,
+  s5.addText("ACO REACH Explorer →", { x:6.0, y:3.72, w:3.45, h:0.48,
     fontSize:11, bold:true, color:TEAL, fontFace:"Calibri", align:"center", valign:"middle", margin:0 });
   s5.addText("reachpuf.trynytyhealth.com", { x:6.0, y:4.28, w:3.45, h:0.22,
     fontSize:10, color:SLATE, fontFace:"Calibri", align:"center", margin:0 });
@@ -486,6 +391,6 @@ export async function generateACOReport(aco, acoRecords, allRecords, onProgress)
   // ── Write file ────────────────────────────────────────────────────────────
   onProgress?.('Generating file...');
   const safeName = aco.aco_name.replace(/[^a-z0-9]/gi, '_').slice(0, 40);
-  await pres.writeFile({ fileName: `TRYNYTY_LEAD_Report_${safeName}.pptx` });
+  await pres.writeFile({ fileName: `TRYNYTY_REACH_Report_${safeName}.pptx` });
   onProgress?.(null); // clear
 }

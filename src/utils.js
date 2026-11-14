@@ -8,7 +8,7 @@ export const fmt = {
     if (abs >= 1e3) return `${sign}$${(abs/1e3).toFixed(0)}K`;
     return `${sign}$${Number(abs).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
   },
-  dollarsM: (v) => v == null ? '—' : `$${Number(v).toFixed(1)}M`,
+  dollarsM: (v) => v == null ? "—" : `${v < 0 ? "-" : ""}$${Math.abs(Number(v)).toFixed(1)}M`,
   pct:  (v, d=1) => v == null ? '—' : `${Number(v).toFixed(d)}%`,
   num:  (v) => v == null ? '—' : Number(v).toLocaleString('en-US', { maximumFractionDigits: 0 }),
   shortNum: (v) => {
@@ -55,37 +55,34 @@ export const CONFIG_LABELS = {
   'Professional/PCC': 'Professional / Primary Care Cap',
 };
 
-// CAHPS SSM measure labels
+// CAHPS SSM measure labels (names from the CMS ACO REACH Financial and Quality Results data dictionary)
 export const CAHPS_LABELS = {
-  ssm_taci: 'Timely Access to Care',
-  ssm_com:  'Communication',
+  ssm_taci: 'Getting Timely Care, Appointments, and Information',
+  ssm_com:  'How Well Providers Communicate',
   ssm_cc:   'Care Coordination',
   ssm_sdm:  'Shared Decision Making',
-  ssm_pr:   'Provider Rating',
-  ssm_chos: 'Choice of Provider',
-  ssm_hpe:  'Health Promotion',
-  ssm_spr:  'Specialist Provider Rating',
+  ssm_pr:   'Patient Rating of Provider',
+  ssm_chos: 'Courteous and Helpful Office Staff',
+  ssm_hpe:  'Health Promotion and Education',
+  ssm_spr:  'Stewardship of Patient Resources',
 };
 
-export const REACH_YEARS = [2021, 2022, 2023];
+export const ordinal = (n) => {
+  const v = Math.round(n);
+  const t = v % 100;
+  if (t >= 11 && t <= 13) return `${v}th`;
+  return `${v}${({ 1: 'st', 2: 'nd', 3: 'rd' })[v % 10] || 'th'}`;
+};
 
 export const PROGRAM_EVENTS = {
-  2021: '9-month founding year (Apr–Dec) · GPDC · Pay-for-reporting quality',
-  2022: 'First full 12-month year · 99 ACOs · GPDC final year',
-  2023: 'Renamed ACO REACH · 132 ACOs · Pay-for-performance quality · HPP introduced',
+  2021: '9-month first year (April to December) · GPDC · Pay-for-reporting quality',
+  2022: 'First full 12-month year · Final GPDC year · CAHPS measures reported',
+  2023: 'Renamed ACO REACH · Pay-for-performance quality · HEBA and High Performers Pool begin',
+  2024: 'Fourth performance year · ACO REACH',
 };
 
 export const YEAR_NARRATIVES = {
-  2021: 'The founding year — 53 ACOs in a 9-month performance period (April–December). All ACOs earned 100% quality scores under pay-for-reporting. Program operated as GPDC before the ACO REACH rebrand. Capitation payments flowed entirely through traditional claims (CLM) with modest Primary Care Cap (CAP) top-up.',
-  2022: 'The program expanded to 99 ACOs for its first full 12-month year. Average savings rate jumped to 6.5% for Global/PCC ACOs. The GPDC rebranded to ACO REACH effective January 2023. CAHPS SSM patient experience measures added.',
-  2023: 'Fully operational as ACO REACH. 132 ACOs, 2M+ beneficiaries. Quality shifted from pay-for-reporting to pay-for-performance — driving average scores from 99% to 79%, the most visible structural change. The Health Equity Benchmark Adjustment (HEBA) introduced. High Performers Pool launched — 24 ACOs earned bonus payments averaging 8.27% savings.',
-};
-
-// LEAD model key dates
-export const LEAD_DATES = {
-  announced:   'December 18, 2025',
-  rfa_released:'March 31, 2026',
-  deadline:    'May 17, 2026',
-  launch:      'January 1, 2027',
-  end:         'December 31, 2036',
+  2021: 'The first performance year: 53 ACOs (then called Direct Contracting Entities) in a 9-month performance period, April to December, under the Global and Professional Direct Contracting (GPDC) Model. Quality was pay-for-reporting, so every ACO received a 100% quality score.',
+  2022: 'The model grew to 99 ACOs in its first full 12-month year, still operating as GPDC. CMS announced in February 2022 that GPDC would be redesigned as ACO REACH effective January 2023. CAHPS patient experience measures were reported but did not affect the quality score.',
+  2023: 'The first year as ACO REACH, with 132 ACOs and about 2 million aligned beneficiaries. Quality moved to pay-for-performance, and the average quality score fell from 99% to 79%. The Health Equity Benchmark Adjustment (HEBA) and the High Performers Pool began; 24 ACOs qualified for the pool.',
 };

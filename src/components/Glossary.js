@@ -1,93 +1,81 @@
 import React, { useState, useMemo } from 'react';
 
 const TERMS = [
-  // ── Financial & Savings ─────────────────────────────────────────────────────
+  // Financial & Savings
   { section:'Financial & Savings', term:'Savings Rate', abbr:'SAV_RATE',
-    def:'Gross savings divided by the final benchmark. Calculated as (Benchmark − Total Cost of Care) ÷ Benchmark × 100. A positive rate means the ACO spent less than its target; negative means overspending. In PY2023, ACO REACH averaged a 3.41% program-level savings rate.' },
-  { section:'Financial & Savings', term:'Gross Savings', abbr:null,
-    def:'Final benchmark minus total cost of care after stop-loss. The full savings amount before any discount, quality adjustment, or sharing rate is applied.' },
-  { section:'Financial & Savings', term:'Earned Savings (Shared Savings)', abbr:null,
-    def:'The portion of gross savings that CMS pays to the ACO. Determined by the sharing rate and discount. In PY2023, ACO REACH ACOs earned $923.3M in shared savings payments.' },
-  { section:'Financial & Savings', term:'Final Benchmark', abbr:null,
-    def:'The spending target an ACO must beat to generate savings. Derived from historical and regional baselines, adjusted for risk scores, trends, and equity adjustments. Compared against total cost of care to determine gross savings.' },
+    def:'Gross savings divided by the final benchmark: (Benchmark minus Total Cost of Care) ÷ Benchmark × 100. A positive rate means the ACO spent less than its benchmark; a negative rate means it spent more. The Program Overview also shows a program-level rate that weights each ACO by its benchmark.' },
+  { section:'Financial & Savings', term:'Gross Savings', abbr:'GROSS_SAVINGS',
+    def:'Final benchmark minus total cost of care. The savings amount before the sharing rate, discount and quality adjustments are applied.' },
+  { section:'Financial & Savings', term:'Earned Savings (Shared Savings)', abbr:'SHARED_SAVINGS',
+    def:'The portion of gross savings (or losses) attributed to the ACO after the risk arrangement, discount and quality adjustments. Negative values are shared losses.' },
+  { section:'Financial & Savings', term:'Final Benchmark', abbr:'FINAL_BENCHMARK',
+    def:'The spending target used to calculate savings. Built from historical and regional baselines and adjusted for risk, trend, the discount and the retention withhold. In the published file, the final benchmark is shown before HEBA.' },
   { section:'Financial & Savings', term:'Per Beneficiary Per Month', abbr:'PBPM',
-    def:'A normalized cost or payment metric: total dollars ÷ (beneficiaries × months). Enables fair comparison across ACOs of different sizes and across years with different enrollment counts. PY2021 uses 9 months; PY2022 and PY2023 use 12 months.' },
-  { section:'Financial & Savings', term:'Discount', abbr:null,
-    def:'A percentage withheld from earned savings based on the risk arrangement. Global risk ACOs face a lower discount than Professional risk ACOs, reflecting their greater financial accountability.' },
-  { section:'Financial & Savings', term:'Retention Withhold', abbr:null,
-    def:'An amount withheld by CMS from shared savings payments, returned to the ACO in subsequent years contingent on continued participation and performance.' },
-  { section:'Financial & Savings', term:'Stop Loss', abbr:null,
-    def:'An optional arrangement for Global risk ACOs that caps financial losses. ACOs electing stop loss give up a portion of savings upside in exchange for protection against large unexpected expenditures.' },
+    def:'Total dollars ÷ (beneficiaries × months). Makes ACOs of different sizes comparable. PY 2021 uses 9 months; later years use 12.' },
+  { section:'Financial & Savings', term:'Discount', abbr:'DISCOUNT',
+    def:'A percentage reduction applied to the benchmark for Global risk ACOs: 2% in PY 2021 and PY 2022 and 3% in PY 2023 in the published files. Professional risk ACOs have no discount.' },
+  { section:'Financial & Savings', term:'Retention Withhold', abbr:'RETENTION_WITHHOLD',
+    def:'A percentage withheld under the model\'s financial methodology. Most ACOs show 0% in the published files; a few show 2%.' },
+  { section:'Financial & Savings', term:'Stop Loss', abbr:'STOP_LOSS_ELECTION',
+    def:'An optional arrangement, available to Global and Professional ACOs, that limits the ACO\'s exposure to spending on very high-cost beneficiaries.' },
 
-  // ── Benchmark & Risk ────────────────────────────────────────────────────────
+  // Benchmarking & Risk Adjustment
   { section:'Benchmarking & Risk Adjustment', term:'Normalized Risk Score', abbr:'NORM_RISK_SCORE',
-    def:'A weighted average risk score across the ACO\'s attributed beneficiary population, normalized relative to the broader Medicare population. A score of 1.0 indicates average Medicare risk; scores above 1.0 reflect higher-acuity populations.' },
-  { section:'Benchmarking & Risk Adjustment', term:'CIF-Capped Risk Score', abbr:'CIF_CAP_RISK',
-    def:'The normalized risk score after applying the Coding Intensity Factor (CIF) cap. The CIF limits the extent to which coding improvement alone can inflate risk scores, ensuring benchmark adjustments reflect true patient complexity rather than documentation patterns.' },
+    def:'Normalized weighted average risk score for the ACO\'s aligned beneficiaries. Published from PY 2023.' },
+  { section:'Benchmarking & Risk Adjustment', term:'Risk Score After CIF and Cap', abbr:'CIF_CAP_RISK',
+    def:'The normalized risk score adjusted for the coding intensity factor (CIF) and the risk score cap, which limit how much risk score growth can raise the benchmark. Published from PY 2023.' },
   { section:'Benchmarking & Risk Adjustment', term:'Concurrent Risk Adjustment', abbr:null,
-    def:'A methodology introduced in PY2023 that incorporates current-year diagnoses into risk score calculations rather than relying solely on historical claims data. Provides more accurate reflection of actual patient complexity. Available for High Needs ACOs in REACH; extended to all in LEAD.' },
-  { section:'Benchmarking & Risk Adjustment', term:'Historical Benchmark', abbr:'HIST_BNCHMK',
-    def:'The baseline spending amount derived from three historical benchmark years (BY1, BY2, BY3) prior to the performance year. Weighted more heavily toward recent years.' },
+    def:'Risk adjustment that uses diagnoses from the performance year itself rather than the prior year. In ACO REACH it applies to High Needs Population ACOs; other ACOs use prospective risk adjustment.' },
   { section:'Benchmarking & Risk Adjustment', term:'Benchmark Years', abbr:'BY1 / BY2 / BY3',
-    def:'The three historical years used to compute an ACO\'s spending baseline. BY3 is most recent; BY1 is oldest. Performance year spending is compared against the adjusted benchmark to determine savings or losses.' },
+    def:'The three historical years used to build an ACO\'s historical baseline. BY3 is the most recent. The PUF publishes baseline PBPM amounts and risk scores for each benchmark year.' },
   { section:'Benchmarking & Risk Adjustment', term:'Health Equity Benchmark Adjustment', abbr:'HEBA',
-    def:'An adjustment to the benchmark that accounts for historically suppressed spending in communities serving dually eligible and underserved beneficiaries. Introduced in PY2022. In PY2023, all 132 ACOs received both upward ($70.4M total) and downward ($69.7M total) adjustments — net-neutral by design but directionally corrective.' },
+    def:'Raises the benchmark for aligned beneficiaries from the most underserved communities and lowers it slightly for those from the least underserved. Began in PY 2023. The PUF reports each ACO\'s total upward and downward HEBA dollars and months.' },
   { section:'Benchmarking & Risk Adjustment', term:'Health Equity Data Reporting Adjustment', abbr:'HEDR / HDR_ADJUST',
-    def:'A quality score bonus of up to 10 percentage points awarded for completeness of beneficiary-reported demographic data submitted to CMS. Introduced in PY2023. Total Quality Score capped at 100%.' },
+    def:'Up to 10 percentage points added to the Total Quality Score for complete beneficiary-reported demographic data submitted to CMS, with the score capped at 100%. Began in PY 2023.' },
 
-  // ── Payment & Capitation ────────────────────────────────────────────────────
-  { section:'Payment & Capitation', term:'Primary Care Capitation', abbr:'CAP / CAP_PMT_AMT',
-    def:'A monthly capitation payment for primary care services provided to attributed beneficiaries. Set prospectively based on historical PCP spend. All ACOs with a PCC capitation arrangement receive CAP payments. Distinct from the ePCC bonus.' },
+  // Payment & Capitation
+  { section:'Payment & Capitation', term:'Primary Care Capitation', abbr:'PCC / CAP_PMT_AMT',
+    def:'A monthly capitation payment for primary care services. Available to Global and Professional ACOs. CAP_PMT_AMT is the total primary care capitation amount.' },
   { section:'Payment & Capitation', term:'Enhanced Primary Care Capitation', abbr:'ePCC / EPCC_PMT_AMT',
-    def:'An additional capitation payment for ACOs that elected the Enhanced PCC arrangement. Acts as a bonus to encourage greater PCP utilization and care coordination. Only flows to ACOs that elected ENHANCED_PCC_ELECTION = Yes. In PY2023, Enhanced PCC electors averaged ~$52 PBPM in ePCC vs ~$1 for non-electors.' },
-  { section:'Payment & Capitation', term:'Traditional Claims Payment', abbr:'CLM / CLM_PMT_AMT',
-    def:'Fee-for-service claims paid outside of capitation arrangements. The dominant payment channel for most REACH ACOs, comprising approximately 90–95% of total cost of care. APO modifies how some non-PCP services within this channel are structured.' },
+    def:'An election to receive primary care capitation at a higher percentage than Basic PCC. EPCC_PMT_AMT is the total enhanced PCC amount; in PY 2023 the median for electing ACOs was about $52 per beneficiary per month.' },
+  { section:'Payment & Capitation', term:'Claims Payments', abbr:'CLM / CLM_PMT_AMT',
+    def:'Total aggregate fee-for-service claim payments made outside capitation. For most ACOs this is the large majority of payments.' },
   { section:'Payment & Capitation', term:'Advanced Payment Option', abbr:'APO',
-    def:'An ACO election (APO_ELECTION) that modifies the capitation payment structure for non-PCP services provided by PCPs. An advance payment mechanism — not a voluntary beneficiary alignment method. In PY2023, APO-electing ACOs averaged 4.91% savings vs 4.42% for non-APO ACOs.' },
+    def:'An election, available to ACOs with Primary Care Capitation, to receive prospective monthly payments for non-primary-care services in place of part of the fee-for-service claims payments for those services.' },
   { section:'Payment & Capitation', term:'Total Care Capitation', abbr:'TCC',
-    def:'A capitation arrangement where the ACO receives a capitated payment covering the full range of Medicare Part A and Part B services (not just primary care). Only Global risk ACOs can elect TCC. Associated with higher savings rates — PY2023 TCC ACOs without stop loss averaged 6.4% savings.' },
-  { section:'Payment & Capitation', term:'Capitation Arrangement', abbr:null,
-    def:'The payment structure elected by the ACO: either Primary Care Capitation (PCC) or Total Care Capitation (TCC). PCC covers only primary care services; TCC covers all Part A/B services. Only Global risk ACOs may elect TCC.' },
-  { section:'Payment & Capitation', term:'Alignment Plus', abbr:null,
-    def:'An ACO-level election to participate in the Alignment Plus arrangement. 122 of 132 PY2023 ACOs (92%) elected Alignment Plus. The specific operational implications of this election are defined by CMS program rules.' },
+    def:'Capitation covering most Part A and Part B services furnished by the ACO\'s participating (and preferred) providers, not only primary care. Available only to Global risk ACOs.' },
+  { section:'Payment & Capitation', term:'Capitation Arrangement', abbr:'CAPITATION_ARRANGEMENT',
+    def:'The payment option elected by the ACO: Primary Care Capitation (PCC) or Total Care Capitation (TCC). Only Global risk ACOs may elect TCC.' },
+  { section:'Payment & Capitation', term:'Alignment Plus', abbr:'ALIGNMENT_PLUS',
+    def:'An ACO-level election reported in the PUF. The PUF does not report how many beneficiaries were aligned through each method.' },
 
-  // ── Quality ──────────────────────────────────────────────────────────────────
+  // Quality Measures
   { section:'Quality Measures', term:'Total Quality Score', abbr:'QUAL_SCR',
-    def:'The proportion of the quality withhold that an ACO earns back, expressed as a percentage (0–100). In PY2021, all ACOs received 100% under pay-for-reporting. In PY2022, measures were pay-for-reporting but displayed. In PY2023, the shift to pay-for-performance drove average scores to ~79%.' },
-  { section:'Quality Measures', term:'All-Condition Readmissions', abbr:'ACR / ACR_SCR',
-    def:'Risk-standardized all-condition readmissions rate. A lower score indicates better performance — fewer patients are being readmitted after discharge. One of the core REACH quality measures affecting the quality withhold.' },
+    def:'The share of the quality withhold the ACO earns back, from 0 to 100%. PY 2021 was pay-for-reporting (every ACO received 100%), PY 2022 was mostly pay-for-reporting, and quality became pay-for-performance in PY 2023.' },
+  { section:'Quality Measures', term:'All-Condition Readmission', abbr:'ACR / ACR_SCR',
+    def:'Risk-standardized all-condition readmission rate. Lower is better. Reported as ACH_SCR in the PY 2021 file.' },
   { section:'Quality Measures', term:'Unplanned Admissions for Multiple Chronic Conditions', abbr:'UAMCC / UAMCC_SCR',
-    def:'Risk-standardized, all-cause unplanned admissions per 100 person-years for patients with multiple chronic conditions. Lower is better. Targets high-need patients who are particularly vulnerable to avoidable hospitalizations.' },
-  { section:'Quality Measures', term:'Timely Follow-Up After Acute Exacerbation', abbr:'TFU / TFU_SCR',
-    def:'The percentage of patients receiving a timely follow-up visit after an acute exacerbation of a chronic condition. Higher is better. Applies to Standard and New Entrant ACOs. Was pay-for-reporting in PY2022.' },
+    def:'Risk-standardized, all-cause unplanned admissions per 100 person-years for patients with multiple chronic conditions. Lower is better.' },
+  { section:'Quality Measures', term:'Timely Follow-Up After Acute Exacerbations of Chronic Conditions', abbr:'TFU / TFU_SCR',
+    def:'Share of acute exacerbations of chronic conditions with timely follow-up. Higher is better. Reported from PY 2022 for Standard and New Entrant ACOs.' },
   { section:'Quality Measures', term:'Days at Home', abbr:'DAH / DAH_SCR',
-    def:'Days at Home for patients with complex, chronic conditions. Higher is better. Applies only to High Needs Population ACOs. Was pay-for-reporting in PY2022.' },
+    def:'Days at home for patients with complex, chronic conditions. Higher is better. Reported for High Needs Population ACOs.' },
   { section:'Quality Measures', term:'Continuous Improvement / Sustained Exceptional Performance', abbr:'CI/SEP',
-    def:'A quality achievement flag (PY2023 only). ACOs meeting CI/SEP criteria demonstrated either meaningful improvement or sustained excellence in quality performance. CI/SEP ACOs averaged 5.80% savings vs 1.07% for non-CI/SEP — a 5.4× difference. Required for HPP eligibility.' },
+    def:'A quality flag reported from PY 2023 indicating whether the ACO met the CI/SEP criteria. Assessed only for ACOs that also participated in the prior performance year.' },
   { section:'Quality Measures', term:'High Performers Pool', abbr:'HPP',
-    def:'A bonus payment pool launched in PY2023 for ACOs meeting CI/SEP criteria and achieving performance above the HPP threshold. Only 24 of 132 PY2023 ACOs (18%) qualified. HPP ACOs averaged 8.27% savings and earned $408M — 44% of all PY2023 earned savings.' },
+    def:'An additional financial benefit for quality performance, reported from PY 2023. In PY 2023, 24 of 132 ACOs qualified, and all of them also met CI/SEP.' },
   { section:'Quality Measures', term:'CAHPS Summary Survey Measures', abbr:'SSM',
-    def:'Patient experience survey measures drawn from the Consumer Assessment of Healthcare Providers and Systems (CAHPS) survey. Includes: Getting Timely Appointments, Care, and Information (TACI); How Well Providers Communicate (COM); Care Coordination (CC); Shared Decision Making (SDM); Patient\'s Rating of Provider (PR); Courteous and Helpful Office Staff (CHOS); Health Promotion and Education (HPE); Stewardship of Patient Resources (SPR). CAHPS was pay-for-reporting in PY2022; pay-for-performance in PY2023.' },
+    def:'Patient experience measures from the CAHPS survey: Getting Timely Care, Appointments, and Information (TACI); How Well Providers Communicate (COM); Care Coordination (CC); Shared Decision Making (SDM); Patient Rating of Provider (PR); Courteous and Helpful Office Staff (CHOS); Health Promotion and Education (HPE); and Stewardship of Patient Resources (SPR). Not reported for PY 2021; pay-for-reporting in PY 2022.' },
 
-  // ── ACO Structure ────────────────────────────────────────────────────────────
-  { section:'ACO Structure & Participation', term:'Risk Arrangement', abbr:null,
-    def:'The financial risk election made by the ACO: either Global (full risk — 80–100% of savings/losses) or Professional (partial risk — 50% of savings/losses). Global risk ACOs are eligible for higher sharing rates and TCC capitation but face greater downside exposure.' },
-  { section:'ACO Structure & Participation', term:'ACO Type', abbr:null,
-    def:'Classification of the ACO\'s experience level: Standard (established organizations with prior ACO/risk experience), New Entrant (organizations new to Medicare risk arrangements), or High Needs Population (DCEs serving predominantly high-need patients, typically including D-SNP and PACE organizations).' },
+  // ACO Structure & Participation
+  { section:'ACO Structure & Participation', term:'Risk Arrangement', abbr:'RISK_ARRANGEMENT',
+    def:'Global (100% of savings and losses) or Professional (50% of savings and losses).' },
+  { section:'ACO Structure & Participation', term:'ACO Type', abbr:'ACO_TYPE',
+    def:'Standard, New Entrant or High Needs. Standard ACOs generally already serve a Medicare fee-for-service population; New Entrants have not traditionally served one and can build alignment over time; High Needs Population ACOs serve beneficiaries with complex needs.' },
   { section:'ACO Structure & Participation', term:'Configuration', abbr:null,
-    def:'The combination of risk arrangement and capitation type: Global/TCC, Global/PCC, or Professional/PCC. In PY2023, Global/TCC without stop loss was the highest-performing configuration (6.4% avg savings, 93% earning savings). Global/PCC had 78 ACOs with 5.2% avg savings.' },
+    def:'In this explorer, the combination of risk arrangement and capitation type (Global/TCC, Global/PCC or Professional/PCC), sometimes split further by the Enhanced PCC and stop-loss elections.' },
   { section:'ACO Structure & Participation', term:'Aligned Beneficiaries', abbr:'BENE_CNT',
-    def:'Total Medicare beneficiaries attributed to the ACO for the performance year. Attribution follows claims-based patterns — beneficiaries are aligned based on their primary care utilization. The REACH PUF does not break out voluntary vs claims-based alignment counts.' },
-
-  // ── LEAD Model ───────────────────────────────────────────────────────────────
-  { section:'LEAD Model (2027–2036)', term:'LEAD Model', abbr:'LEAD',
-    def:'The Longitudinal Excellence, Accountability, and Data-Driven (LEAD) Model — the successor to ACO REACH, launching January 1, 2027 and running through 2036. Retains the core ACO REACH structure (Global/Professional risk, capitation, HEBA) while adding a 10-year no-rebase term, expanded beneficiary engagement tools, and CARA episode arrangements.' },
-  { section:'LEAD Model (2027–2036)', term:'CARA Episode Arrangements', abbr:'CARA',
-    def:'Condition-specific episode payment arrangements available to Global risk LEAD ACOs. Administered by CMS, these enable ACOs to share savings or losses with specialists for defined clinical episodes (e.g., joint replacement, cardiac events). Enable preferred provider relationships and extend accountability beyond primary care.' },
-  { section:'LEAD Model (2027–2036)', term:'10-Year No-Rebase Term', abbr:null,
-    def:'A structural feature of LEAD that locks in the benchmark for the full 10-year model term without annual rebasing. In REACH, benchmarks were recalculated each year, making it progressively harder for efficient ACOs to show savings. LEAD\'s stable benchmark rewards compounding performance over time.' },
-  { section:'LEAD Model (2027–2036)', term:'LEAD Application Deadline', abbr:null,
-    def:'Applications to participate in the LEAD Model are due May 17, 2026. The LEAD Model launches January 1, 2027. Organizations that participated in ACO REACH are well-positioned to apply given their familiarity with capitation, concurrent risk adjustment, and HEBA.' },
+    def:'Total Medicare beneficiaries aligned to the ACO for the performance year, through claims-based or voluntary alignment. The PUF does not report the split. Reported as ALIGNED_BENEFICIARIES in the PY 2021 file.' },
 ];
 
 const SECTIONS = [...new Set(TERMS.map(t => t.section))];
@@ -127,7 +115,7 @@ export default function Glossary() {
         <div className="chart-title">Glossary & Key Terms</div>
         <div className="chart-subtitle">
           Definitions for key metrics, program terms, and acronyms used throughout the
-          ACO REACH → LEAD Explorer. Terms are drawn from CMS program documentation and
+          ACO REACH Explorer. Terms are drawn from CMS program documentation and
           the ACO REACH Public Use File data dictionaries.
         </div>
 
