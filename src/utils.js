@@ -134,11 +134,13 @@ export const expensePBPM = (r) => (r && r.tot_cost_care != null && r.bene_cnt)
   ? r.tot_cost_care / (r.bene_cnt * monthsFor(r.perf_year)) : null;
 export const sharedPerBene = (r) => (r && r.shared_savings != null && r.bene_cnt) ? r.shared_savings / r.bene_cnt : null;
 
-// CMS published program results ($ millions). PY 2023 and PY 2024: ACO REACH Financial and Quality
-// Results fact sheets. PY 2021 and PY 2022 Medicare savings: as reported in the PY 2024 results summary.
+// CMS published program results ($ millions), using the most recent CMS statement of each figure.
+// PY 2024 and the PY 2023 Medicare and ACO figures: PY 2024 Financial and Quality Results fact sheet
+// (which restates PY 2023 net to ACOs as $948.2M; the PY 2023 sheet said $948.4M). PY 2023 gross: PY 2023 fact sheet.
+// PY 2021 and PY 2022 Medicare savings: as reported in the PY 2024 results summary.
 export const CMS_PUBLISHED = {
   2021: { medicare: 70.4 },
   2022: { medicare: 371.1, acos: 484.1 },
-  2023: { gross: 1643, medicare: 694.6, acos: 948.4 },
+  2023: { gross: 1643, medicare: 694.6, acos: 948.2 },
   2024: { gross: 2511, medicare: 988.3, acos: 1522 },
 };
