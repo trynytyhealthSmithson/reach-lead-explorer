@@ -84,7 +84,10 @@ export default function App() {
   const unpinACO = () => setPinnedACO(null);
 
   const years = perfData?.years || [];
-  const yearSpan = years.length ? `PY ${years[0]} to ${years[years.length - 1]}` : '';
+  const [viewedACO, setViewedACO] = useState(null);   // ACO open in the Deep Dive, with its own years
+  const span = ys => (ys.length === 1 ? `PY ${ys[0]}` : ys[ys.length - 1] - ys[0] === ys.length - 1 ? `PY ${ys[0]} to ${ys[ys.length - 1]}` : `PY ${ys.join(', ')}`);
+  const programSpan = years.length ? span(years) : '';
+  const yearSpan = page === 'aco' && viewedACO ? `${viewedACO.aco_id}: ${span(viewedACO.years)}` : programSpan;
   const sections = [...new Set(NAV.map(n => n.section))];
 
   const navList = (
@@ -113,7 +116,7 @@ export default function App() {
         {navList}
         <div className="sidebar-footer">
           Data: CMS ACO REACH Financial and Quality Results public use files<br />
-          {yearSpan} &nbsp;|&nbsp; {perfData?.total || 0} ACO performance records
+          {programSpan} &nbsp;|&nbsp; {perfData?.total || 0} ACO performance records
           <div style={{ marginTop: 6, fontSize: 10, color: 'rgba(255,255,255,0.45)', lineHeight: 1.5 }}>
             Source: CMS Innovation Center<br />
             <a href="#methodology">Methodology and validation</a>
@@ -178,7 +181,7 @@ export default function App() {
               {page === 'aco' && (
                 <ACODeepDive perfData={perfData} initialACO={deepDiveACO}
                   initialVersion={deepDiveVersion} pinnedACO={pinnedACO}
-                  pinACO={pinACO} unpinACO={unpinACO} />
+                  pinACO={pinACO} unpinACO={unpinACO} onACOChange={setViewedACO} />
               )}
               {page === 'bridge' && <SavingsBridge perfData={perfData} navigateToACO={navigateToACO} pinnedACO={pinnedACO} />}
               {page === 'quality' && <QualityDashboard perfData={perfData} navigateToACO={navigateToACO} pinnedACO={pinnedACO} />}
