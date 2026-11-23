@@ -394,7 +394,7 @@ function computeRVM(curr, prev) {
 
 export default function ACODeepDive({
   perfData, initialACO, initialVersion,
-  pinnedACO, pinACO, unpinACO
+  pinnedACO, pinACO, unpinACO, onACOChange
 }) {
   const [selectedACO, setSelectedACO] = useState(null);
   const [activeTab,   setActiveTab]   = useState('overview');
@@ -432,6 +432,11 @@ export default function ACODeepDive({
       .filter(r => r.aco_id === aco.aco_id)
       .sort((a,b) => a.perf_year - b.perf_year);
   }, [aco, records]);
+  // Tell the header which years this ACO took part in, so its badge shows the ACO's years, not the program's
+  useEffect(() => {
+    if (!onACOChange) return;
+    onACOChange(aco && acoRecords.length ? { aco_id: aco.aco_id, years: acoRecords.map(r => r.perf_year) } : null);
+  }, [aco, acoRecords]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const latest = acoRecords[acoRecords.length - 1];
   const prior  = acoRecords[acoRecords.length - 2];
@@ -767,10 +772,11 @@ export default function ACODeepDive({
                     ? 'Global risk (100% of savings and losses) with Primary Care Capitation; other services are paid through fee-for-service claims.'
                     : 'Professional risk (50% of savings and losses) with Primary Care Capitation.')}
                   {(() => {
-                    const g = records.filter(r => r.perf_year===latest?.perf_year && r.config_key===latest?.config_key && r.sav_rate!=null);
+                    // Same basis as the Peer Comparison panel's configuration peers: other ACOs, this ACO left out
+                    const g = records.filter(r => r.perf_year===latest?.perf_year && r.config_key===latest?.config_key && r.aco_id!==latest?.aco_id && r.sav_rate!=null);
                     if (!g.length) return null;
                     const avg = g.reduce((s,r)=>s+r.sav_rate,0)/g.length;
-                    return ` In PY ${latest.perf_year}, ${g.length} ACOs used this configuration and averaged a ${avg.toFixed(1)}% savings rate.`;
+                    return ` In PY ${latest.perf_year}, ${g.length + 1} ACOs used this configuration; the other ${g.length} averaged a ${avg.toFixed(2)}% savings rate (the configuration peer average in Peer Comparison).`;
                   })()}
                 </div>
               </div>
