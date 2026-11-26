@@ -213,8 +213,9 @@ export async function generateREACHDeck(aco, acoRecords, allRecords, onProgress)
   // ---- 6. Configuration and payments
   {
     const payTot = f(L.cap_pmt) + f(L.epcc_pmt) + f(L.clm_pmt);
-    const g = all.filter(r => r.config_key === L.config_key);
-    const s = frame('Configuration and payments', `${CONFIG[L.config_key] || L.config_key}: ${g.length} ACOs used this configuration in PY ${Y} and averaged a ${pct(g.reduce((a, r) => a + f(r.sav_rate), 0) / (g.length || 1), 2)} savings rate`);
+    // Same basis as the Deep Dive's Configuration Context and peer panel: other ACOs with a savings rate, this ACO left out
+    const g = all.filter(r => r.config_key === L.config_key && r.aco_id !== id && r.sav_rate != null);
+    const s = frame('Configuration and payments', g.length ? `${CONFIG[L.config_key] || L.config_key}: ${g.length + 1} ACOs used this configuration in PY ${Y}; the other ${g.length} averaged a ${pct(g.reduce((a, r) => a + r.sav_rate, 0) / g.length, 2)} savings rate` : `${CONFIG[L.config_key] || L.config_key}, PY ${Y}`);
     if (payTot) s.addChart(pres.charts.DOUGHNUT, [{ name: 'Payments', labels: ['Capitation', 'Enhanced PCC', 'Fee-for-service claims'], values: [f(L.cap_pmt), f(L.epcc_pmt), f(L.clm_pmt)].map(v => Math.round(v)) }],
       { x: 0.35, y: 1.25, w: 4.4, h: 3.85, chartColors: [TEAL, NAVY2, 'C8D0DB'], holeSize: 55, showLegend: true, legendPos: 'b', legendFontSize: 9, showPercent: true, dataLabelColor: WHITE, dataLabelFontSize: 9,
         showTitle: true, title: `How Medicare paid for care, PY ${Y}`, titleFontSize: 11, titleColor: NAVY });
